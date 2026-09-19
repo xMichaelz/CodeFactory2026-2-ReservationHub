@@ -1,0 +1,318 @@
+{
+  "info": {
+    "name": "ReservaHub Sprint 1",
+    "description": "Colección HU-01 a HU-10 + casos negativos. Caso 14 CodeF@ctory.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "accessToken", "value": "" },
+    { "key": "serviceId", "value": "" },
+    { "key": "scheduleId", "value": "" },
+    { "key": "suffix", "value": "{{$timestamp}}" }
+  ],
+  "item": [
+    {
+      "name": "AUTH",
+      "item": [
+        {
+          "name": "Login provider",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"provider-{{suffix}}@example.com\",\n  \"password\": \"Secret123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Login bad credentials",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"provider-{{suffix}}@example.com\",\n  \"password\": \"WrongPass1\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "USERS",
+      "item": [
+        {
+          "name": "Register client",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"client-{{suffix}}@example.com\",\n  \"password\": \"Secret123\",\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Cliente\",\n  \"phone\": \"3001112233\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          }
+        },
+        {
+          "name": "Register client invalid email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"Secret123\",\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Cliente\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          }
+        },
+        {
+          "name": "Register client duplicate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"client-{{suffix}}@example.com\",\n  \"password\": \"Secret123\",\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Cliente\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/users"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PROVIDERS",
+      "item": [
+        {
+          "name": "Register provider",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"provider-{{suffix}}@example.com\",\n  \"password\": \"Secret123\",\n  \"firstName\": \"Luis\",\n  \"lastName\": \"Proveedor\",\n  \"businessName\": \"Clinica {{suffix}}\",\n  \"description\": \"Consultorio\",\n  \"address\": \"Calle 1\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/providers"
+          }
+        }
+      ]
+    },
+    {
+      "name": "SERVICES",
+      "item": [
+        {
+          "name": "Create service",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('serviceId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Consulta general\",\n  \"description\": \"30 min\",\n  \"durationMinutes\": 30,\n  \"price\": 80000\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/services"
+          }
+        },
+        {
+          "name": "Update service",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Consulta prioritaria\",\n  \"description\": \"45 min\",\n  \"durationMinutes\": 45,\n  \"price\": 120000\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/services/{{serviceId}}"
+          }
+        },
+        {
+          "name": "Deactivate service",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/services/{{serviceId}}/deactivate"
+          }
+        },
+        {
+          "name": "Create service unauthorized (no token)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"X\",\n  \"durationMinutes\": 10,\n  \"price\": 1\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/services"
+          }
+        }
+      ]
+    },
+    {
+      "name": "SCHEDULE",
+      "item": [
+        {
+          "name": "Create schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('scheduleId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dayOfWeek\": \"MONDAY\",\n  \"startTime\": \"09:00:00\",\n  \"endTime\": \"12:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/schedules"
+          }
+        },
+        {
+          "name": "Create schedule invalid range",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dayOfWeek\": \"TUESDAY\",\n  \"startTime\": \"12:00:00\",\n  \"endTime\": \"09:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/schedules"
+          }
+        },
+        {
+          "name": "Create schedule overlap",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dayOfWeek\": \"MONDAY\",\n  \"startTime\": \"11:00:00\",\n  \"endTime\": \"13:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/schedules"
+          }
+        },
+        {
+          "name": "Create schedule block",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blockDate\": \"2026-09-21\",\n  \"startTime\": \"10:00:00\",\n  \"endTime\": \"11:00:00\",\n  \"reason\": \"Mantenimiento\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/schedules/{{scheduleId}}/blocks"
+          }
+        }
+      ]
+    },
+    {
+      "name": "RESOURCES",
+      "item": [
+        {
+          "name": "Create resource",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Consultorio 1\",\n  \"resourceType\": \"ROOM\",\n  \"description\": \"Sala principal\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/resources"
+          }
+        },
+        {
+          "name": "Create resource duplicate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Consultorio 1\",\n  \"resourceType\": \"ROOM\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/resources"
+          }
+        }
+      ]
+    },
+    {
+      "name": "OPS",
+      "item": [
+        {
+          "name": "Actuator health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/actuator/health"
+          }
+        }
+      ]
+    }
+  ]
+}

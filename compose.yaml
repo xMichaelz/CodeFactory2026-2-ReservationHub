@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: reservahub-db
+    environment:
+      POSTGRES_DB: reservahub
+      POSTGRES_USER: reservahub
+      POSTGRES_PASSWORD: reservahub
+    ports:
+      # Host 5433 avoids clashing with a local PostgreSQL on 5432
+      - "5433:5432"
+    volumes:
+      - reservahub_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reservahub -d reservahub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: reservahub-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/reservahub
+      DB_USERNAME: reservahub
+      DB_PASSWORD: reservahub
+      JWT_SECRET: change-me-to-a-long-random-secret-at-least-256-bits-long!!
+      JWT_EXPIRATION_MS: "3600000"
+      SERVER_PORT: "8080"
+    ports:
+      - "8080:8080"
+
+volumes:
+  reservahub_pgdata:
