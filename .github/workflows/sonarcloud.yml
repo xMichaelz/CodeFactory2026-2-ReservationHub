@@ -2,9 +2,8 @@ name: SonarQube
 on:
   push:
     branches:
-      - master
-  pull_request:
-    types: [opened, synchronize, reopened]
+      - QA
+  workflow_dispatch:
 jobs:
   build:
     name: Build and analyze
