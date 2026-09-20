@@ -2,7 +2,7 @@ name: SonarQube
 on:
   push:
     branches:
-      - QA
+      - main
   workflow_dispatch:
 jobs:
   build:
