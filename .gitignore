@@ -45,3 +45,6 @@ build/
 ### OS ###
 .DS_Store
 Thumbs.db
+
+### Documentación local (no se versiona) ###
+/documentacion/
