@@ -23,12 +23,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, LockoutProperties.class})
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -67,6 +68,11 @@ public class SecurityConfig {
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
+	}
+
+	@Bean
+	Clock clock() {
+		return Clock.systemUTC();
 	}
 
 	@Bean
