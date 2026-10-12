@@ -2,6 +2,7 @@ package co.udea.codefactory.reservahub.reservation.controller;
 
 import co.udea.codefactory.reservahub.reservation.DTO.CancelReservationRequestDTO;
 import co.udea.codefactory.reservahub.reservation.DTO.CreateReservationRequestDTO;
+import co.udea.codefactory.reservahub.reservation.DTO.RescheduleReservationRequestDTO;
 import co.udea.codefactory.reservahub.reservation.DTO.ReservationResponseDTO;
 import co.udea.codefactory.reservahub.reservation.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +22,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/reservations")
-@Tag(name = "Reservations", description = "Create and cancel reservations (HU-12 to HU-15)")
+@Tag(name = "Reservations", description = "Create and cancel reservations (HU-12 to HU-16)")
 @SecurityRequirement(name = "bearerAuth")
 public class ReservationController {
 
@@ -42,5 +43,12 @@ public class ReservationController {
 	public ReservationResponseDTO cancel(@PathVariable UUID id,
 			@Valid @RequestBody(required = false) CancelReservationRequestDTO request) {
 		return reservationService.cancel(id, request);
+	}
+
+	@PatchMapping("/{id}/reschedule")
+	@Operation(summary = "Move a future reservation to another free slot; 409 if the slot is not free (HU-16)")
+	public ReservationResponseDTO reschedule(@PathVariable UUID id,
+			@Valid @RequestBody RescheduleReservationRequestDTO request) {
+		return reservationService.reschedule(id, request);
 	}
 }

@@ -81,7 +81,7 @@ public class AvailabilityService {
 
 		List<AvailabilityResponseDTO.Day> days = new ArrayList<>();
 		for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
-			List<TimeRange> free = freeSlots(service, date, now, required, resourcesByService);
+			List<TimeRange> free = freeSlots(service, date, now, required, resourcesByService, null);
 			if (!free.isEmpty()) {
 				days.add(new AvailabilityResponseDTO.Day(date, free.stream()
 						.map(r -> new AvailabilityResponseDTO.Slot(r.start(), r.end())).toList()));
@@ -100,14 +100,23 @@ public class AvailabilityService {
 	 * llamada. Quien reserva la llama con el proveedor bloqueado para que el resultado no cambie antes de guardar.
 	 */
 	public List<TimeRange> freeSlots(CatalogService service, LocalDate date, LocalDateTime now) {
+		return freeSlots(service, date, now, null);
+	}
+
+	/**
+	 * Igual que {@link #freeSlots(CatalogService, LocalDate, LocalDateTime)} pero sin contar la reserva indicada:
+	 * al reprogramar, la reserva no compite consigo misma por el nuevo horario (HU-16).
+	 */
+	public List<TimeRange> freeSlots(CatalogService service, LocalDate date, LocalDateTime now,
+			UUID ignoredReservationId) {
 		List<RequiredResource> required = requiredResources(service.getId());
 		Map<UUID, Set<UUID>> resourcesByService = new HashMap<>();
 		resourcesByService.put(service.getId(), idsOf(required));
-		return freeSlots(service, date, now, required, resourcesByService);
+		return freeSlots(service, date, now, required, resourcesByService, ignoredReservationId);
 	}
 
 	private List<TimeRange> freeSlots(CatalogService service, LocalDate date, LocalDateTime now,
-			List<RequiredResource> required, Map<UUID, Set<UUID>> resourcesByService) {
+			List<RequiredResource> required, Map<UUID, Set<UUID>> resourcesByService, UUID ignoredReservationId) {
 		List<AttentionSchedule> schedules = scheduleRepository.findByProviderIdAndDayOfWeek(service.getProviderId(),
 				co.udea.codefactory.reservahub.shared.enums.DayOfWeek.valueOf(date.getDayOfWeek().name()));
 		List<TimeRange> windows = schedules.stream()
@@ -115,7 +124,8 @@ public class AvailabilityService {
 		List<TimeRange> blocks = schedules.stream()
 				.flatMap(s -> blockRepository.findByScheduleIdAndBlockDate(s.getId(), date).stream())
 				.map(b -> new TimeRange(b.getStartTime(), b.getEndTime())).toList();
-		List<BookedSlot> bookings = bookingsOf(service.getProviderId(), date, resourcesByService);
+		List<BookedSlot> bookings = bookingsOf(service.getProviderId(), date, resourcesByService,
+				ignoredReservationId);
 
 		return AvailabilityCalculator.calculate(AvailabilityQuery.builder().date(date).now(now)
 				.serviceActive(service.getStatus() == EntityStatus.ACTIVE)
@@ -130,9 +140,11 @@ public class AvailabilityService {
 				.map((Resource r) -> new RequiredResource(r.getId(), r.getQuantity())).toList();
 	}
 
-	private List<BookedSlot> bookingsOf(UUID providerId, LocalDate date, Map<UUID, Set<UUID>> cache) {
+	private List<BookedSlot> bookingsOf(UUID providerId, LocalDate date, Map<UUID, Set<UUID>> cache,
+			UUID ignoredReservationId) {
 		List<Reservation> reservations = reservationRepository.findByProviderIdAndReservationDateAndStatus(
-				providerId, date, ReservationStatus.CONFIRMED);
+				providerId, date, ReservationStatus.CONFIRMED).stream()
+				.filter(r -> !r.getId().equals(ignoredReservationId)).toList();
 		Set<UUID> missing = new HashSet<>();
 		reservations.forEach(r -> {
 			if (!cache.containsKey(r.getServiceId())) {

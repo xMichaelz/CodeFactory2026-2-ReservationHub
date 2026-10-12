@@ -5,6 +5,7 @@ import co.udea.codefactory.reservahub.provider.entity.Provider;
 import co.udea.codefactory.reservahub.provider.repository.ProviderRepository;
 import co.udea.codefactory.reservahub.reservation.DTO.CancelReservationRequestDTO;
 import co.udea.codefactory.reservahub.reservation.DTO.CreateReservationRequestDTO;
+import co.udea.codefactory.reservahub.reservation.DTO.RescheduleReservationRequestDTO;
 import co.udea.codefactory.reservahub.reservation.DTO.ReservationResponseDTO;
 import co.udea.codefactory.reservahub.reservation.entity.Reservation;
 import co.udea.codefactory.reservahub.reservation.entity.ReservationAction;
@@ -127,14 +128,7 @@ public class ReservationService {
 		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
 		Reservation reservation = reservationRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
-		boolean byProvider = actor.hasRole(Role.PROVIDER);
-		if (byProvider) {
-			if (!providerRepository.existsByIdAndUserId(reservation.getProviderId(), actor.userId())) {
-				throw new ForbiddenException("The reservation does not belong to the provider");
-			}
-		} else if (!reservation.getClientId().equals(actor.userId())) {
-			throw new ForbiddenException("The reservation does not belong to the client");
-		}
+		boolean byProvider = requireOwner(actor, reservation);
 		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
 			throw new ConflictException("The reservation is already cancelled");
 		}
@@ -167,6 +161,84 @@ public class ReservationService {
 		Provider provider = providerRepository.findById(saved.getProviderId())
 				.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
 		return reservationMapper.toResponse(saved, service, provider);
+	}
+
+	/**
+	 * Mueve una reserva confirmada y futura a otro hueco libre del mismo servicio (HU-16). Con el proveedor
+	 * bloqueado se recalcula la disponibilidad sin contar la propia reserva; si el hueco no está libre la reserva
+	 * queda como estaba. {@code @Version} hace que una edición simultánea de la misma fila termine en 409.
+	 */
+	@Transactional
+	public ReservationResponseDTO reschedule(UUID id, RescheduleReservationRequestDTO request) {
+		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
+		Reservation reservation = reservationRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
+		requireOwner(actor, reservation);
+		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+			throw new ConflictException("Only confirmed reservations can be rescheduled");
+		}
+		LocalDateTime now = availabilityService.now();
+		if (!reservation.getReservationDate().atTime(reservation.getStartTime()).isAfter(now)) {
+			throw badRequest("Only future reservations can be rescheduled");
+		}
+		if (!request.date().atTime(request.startTime()).isAfter(now)) {
+			throw badRequest("The new time must be in the future");
+		}
+		CatalogService service = catalogServiceRepository.findById(reservation.getServiceId())
+				.orElseThrow(() -> new ResourceNotFoundException("Service not found"));
+
+		Provider provider = providerRepository.findByIdForUpdate(reservation.getProviderId())
+				.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+
+		TimeRange slot = availabilityService.freeSlots(service, request.date(), now, reservation.getId()).stream()
+				.filter(free -> free.start().equals(request.startTime()))
+				.findFirst()
+				.orElseThrow(() -> new ConflictException("The requested time slot is not available"));
+		boolean clientBusy = reservationRepository.findConfirmedOverlappingForClient(reservation.getClientId(),
+				request.date(), slot.start(), slot.end()).stream()
+				.anyMatch(other -> !other.getId().equals(reservation.getId()));
+		if (clientBusy) {
+			throw new ConflictException("The client already has a reservation at that time");
+		}
+
+		ReservationHistory history = new ReservationHistory();
+		history.setReservationId(reservation.getId());
+		history.setAction(ReservationAction.RESCHEDULED);
+		history.setActorUserId(actor.userId());
+		history.setOldDate(reservation.getReservationDate());
+		history.setOldStart(reservation.getStartTime());
+		history.setOldEnd(reservation.getEndTime());
+
+		reservation.setReservationDate(request.date());
+		reservation.setStartTime(slot.start());
+		reservation.setEndTime(slot.end());
+		Reservation saved = reservationRepository.save(reservation);
+
+		history.setNewDate(saved.getReservationDate());
+		history.setNewStart(saved.getStartTime());
+		history.setNewEnd(saved.getEndTime());
+		historyRepository.save(history);
+
+		auditLogger.info("RESERVATION_RESCHEDULED", "reservationId=" + saved.getId() + " actorId=" + actor.userId()
+				+ " from=" + history.getOldDate() + "T" + history.getOldStart() + " to=" + saved.getReservationDate()
+				+ "T" + saved.getStartTime());
+		return reservationMapper.toResponse(saved, service, provider);
+	}
+
+	/**
+	 * El rol PROVIDER actúa sobre las reservas de su agenda; cualquier otro, sobre las suyas como cliente.
+	 * Devuelve si actúa como proveedor.
+	 */
+	private boolean requireOwner(AuthenticatedUser actor, Reservation reservation) {
+		boolean byProvider = actor.hasRole(Role.PROVIDER);
+		if (byProvider) {
+			if (!providerRepository.existsByIdAndUserId(reservation.getProviderId(), actor.userId())) {
+				throw new ForbiddenException("The reservation does not belong to the provider");
+			}
+		} else if (!reservation.getClientId().equals(actor.userId())) {
+			throw new ForbiddenException("The reservation does not belong to the client");
+		}
+		return byProvider;
 	}
 
 	/**

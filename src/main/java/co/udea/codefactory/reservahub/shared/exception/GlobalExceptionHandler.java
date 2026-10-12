@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -75,6 +76,14 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiErrorResponse> handleAuth(RuntimeException ex, HttpServletRequest request) {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
 				.body(new ApiErrorResponse(ErrorCodes.UNAUTHORIZED, "Invalid credentials", traceId(request)));
+	}
+
+	/** Otra petición modificó la misma fila ({@code @Version}) antes del commit: se reintenta, no es un 500. */
+	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+	public ResponseEntity<ApiErrorResponse> handleOptimisticLock(ObjectOptimisticLockingFailureException ex,
+			HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErrorResponse(ErrorCodes.CONFLICT,
+				"The resource was modified by another request; reload and try again", traceId(request)));
 	}
 
 	@ExceptionHandler(AccessDeniedException.class)
