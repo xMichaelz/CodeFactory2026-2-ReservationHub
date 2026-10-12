@@ -50,15 +50,16 @@ class EndpointSecurityMatrixTest extends AbstractIntegrationTest {
 			"POST /api/v1/users", "POST /api/v1/providers", "POST /api/v1/auth/login");
 
 	/** Endpoints autenticados: clave "MÉTODO ruta" → roles permitidos. */
-	private static final Map<String, Set<String>> MATRIX = Map.of(
-			"POST /api/v1/auth/logout", ALL_ROLES,
-			"POST /api/v1/services", Set.of(PROVIDER),
-			"PUT /api/v1/services/{id}", Set.of(PROVIDER),
-			"PATCH /api/v1/services/{id}/deactivate", Set.of(PROVIDER),
-			"POST /api/v1/services/{id}/resources", Set.of(PROVIDER),
-			"POST /api/v1/schedules", Set.of(PROVIDER),
-			"POST /api/v1/schedules/{id}/blocks", Set.of(PROVIDER),
-			"POST /api/v1/resources", Set.of(PROVIDER));
+	private static final Map<String, Set<String>> MATRIX = Map.ofEntries(
+			Map.entry("POST /api/v1/auth/logout", ALL_ROLES),
+			Map.entry("POST /api/v1/services", Set.of(PROVIDER)),
+			Map.entry("PUT /api/v1/services/{id}", Set.of(PROVIDER)),
+			Map.entry("PATCH /api/v1/services/{id}/deactivate", Set.of(PROVIDER)),
+			Map.entry("POST /api/v1/services/{id}/resources", Set.of(PROVIDER)),
+			Map.entry("GET /api/v1/services/{serviceId}/availability", Set.of(CLIENT, PROVIDER)),
+			Map.entry("POST /api/v1/schedules", Set.of(PROVIDER)),
+			Map.entry("POST /api/v1/schedules/{id}/blocks", Set.of(PROVIDER)),
+			Map.entry("POST /api/v1/resources", Set.of(PROVIDER)));
 
 	@Autowired
 	private ApplicationContext context;
