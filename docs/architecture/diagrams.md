@@ -33,7 +33,7 @@ co.udea.codefactory.reservahub
 ├── servicecatalog
 ├── schedule
 ├── resource
-├── reservation   (placeholder)
+├── reservation   (activo desde Sprint 2)
 ├── report        (placeholder)
 ├── security
 ├── audit

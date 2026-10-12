@@ -1,0 +1,698 @@
+{
+  "info": {
+    "name": "ReservaHub Sprint 2",
+    "description": "Reservas HU-11 a HU-16: disponibilidad, reservar, doble reserva, reprogramar y cancelar. Ejecutar en orden con el Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "suffix",
+      "value": "{{$timestamp}}"
+    },
+    {
+      "key": "provToken",
+      "value": ""
+    },
+    {
+      "key": "anaToken",
+      "value": ""
+    },
+    {
+      "key": "betoToken",
+      "value": ""
+    },
+    {
+      "key": "anaId",
+      "value": ""
+    },
+    {
+      "key": "serviceId",
+      "value": ""
+    },
+    {
+      "key": "resourceId",
+      "value": ""
+    },
+    {
+      "key": "reservationId",
+      "value": ""
+    },
+    {
+      "key": "providerReservationId",
+      "value": ""
+    },
+    {
+      "key": "day",
+      "value": ""
+    },
+    {
+      "key": "dow",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Preparación (día de mañana)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const d=new Date(Date.now()+86400000+(-5*3600000));pm.collectionVariables.set('day', d.toISOString().slice(0,10));",
+              "const w=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];pm.collectionVariables.set('dow', w[d.getUTCDay()]);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/actuator/health"
+      }
+    },
+    {
+      "name": "Registrar proveedor",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/providers",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"prov-{{suffix}}@example.com\",\n  \"password\": \"Secret123\",\n  \"firstName\": \"Luis\",\n  \"lastName\": \"Proveedor\",\n  \"businessName\": \"Clinica {{suffix}}\",\n  \"serviceType\": \"SALUD\",\n  \"description\": \"Consultorio\",\n  \"address\": \"Calle 1\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registrar cliente Ana",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/users",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ana-{{suffix}}@example.com\",\n  \"password\": \"Secret123\",\n  \"firstName\": \"Ana\",\n  \"lastName\": \"C\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('anaId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Registrar cliente Beto",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/users",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"beto-{{suffix}}@example.com\",\n  \"password\": \"Secret123\",\n  \"firstName\": \"Beto\",\n  \"lastName\": \"C\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login prov",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"prov-{{suffix}}@example.com\",\n  \"password\": \"Secret123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('provToken', pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login ana",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"ana-{{suffix}}@example.com\",\n  \"password\": \"Secret123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('anaToken', pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login beto",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"beto-{{suffix}}@example.com\",\n  \"password\": \"Secret123\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('betoToken', pm.response.json().accessToken);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crear servicio (60 min)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{provToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/services",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Consulta {{suffix}}\",\n  \"durationMinutes\": 60,\n  \"price\": 1000\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('serviceId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crear horario 09-12 de mañana",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{provToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/schedules",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"dayOfWeek\": \"{{dow}}\",\n  \"startTime\": \"09:00\",\n  \"endTime\": \"12:00\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crear recurso (cantidad 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{provToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/resources",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Sala {{suffix}}\",\n  \"resourceType\": \"SALA\",\n  \"quantity\": 1\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('resourceId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Asociar recurso al servicio",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{provToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/services/{{serviceId}}/resources",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"resourceIds\": [\n    \"{{resourceId}}\"\n  ]\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-11 Disponibilidad (09,10,11)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{anaToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?from={{day}}&to={{day}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('3 huecos', () => pm.expect(pm.response.json().days[0].slots.length).to.eql(3));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-12 Ana reserva 09:00",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{anaToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{day}}\",\n  \"startTime\": \"09:00\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('reservationId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doble reserva Beto 09:00 → 409",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{betoToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"date\": \"{{day}}\",\n  \"startTime\": \"09:00\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-13 Proveedor reserva 11:00 a nombre de Ana",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{provToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"serviceId\": \"{{serviceId}}\",\n  \"clientId\": \"{{anaId}}\",\n  \"date\": \"{{day}}\",\n  \"startTime\": \"11:00\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('providerReservationId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Beto no puede reprogramar reserva ajena → 403",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{betoToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations/{{reservationId}}/reschedule",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"{{day}}\",\n  \"startTime\": \"10:00\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 403', () => pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-16 Ana reprograma a 10:00",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{anaToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations/{{reservationId}}/reschedule",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"date\": \"{{day}}\",\n  \"startTime\": \"10:00\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-14 Ana cancela",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{anaToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations/{{reservationId}}/cancel",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('estado', () => pm.expect(pm.response.json().status).to.eql('CANCELLED_BY_CLIENT'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-15 Proveedor cancela sin motivo → 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{provToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations/{{providerReservationId}}/cancel",
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-15 Proveedor cancela con motivo",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{provToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/reservations/{{providerReservationId}}/cancel",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Imprevisto\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "El hueco vuelve (09,10,11)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{betoToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/services/{{serviceId}}/availability?from={{day}}&to={{day}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200', () => pm.response.to.have.status(200));",
+              "pm.test('3 huecos', () => pm.expect(pm.response.json().days[0].slots.length).to.eql(3));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
