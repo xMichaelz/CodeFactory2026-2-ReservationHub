@@ -10,6 +10,7 @@ public record ResourceResponseDTO(
 		UUID providerId,
 		String name,
 		String resourceType,
+		Integer quantity,
 		String description,
 		EntityStatus status,
 		Instant createdAt

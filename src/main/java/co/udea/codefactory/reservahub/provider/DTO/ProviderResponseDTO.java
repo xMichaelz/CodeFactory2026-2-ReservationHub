@@ -12,6 +12,7 @@ public record ProviderResponseDTO(
 		String firstName,
 		String lastName,
 		String businessName,
+		String serviceType,
 		String description,
 		String address,
 		EntityStatus status,

@@ -42,6 +42,7 @@ public class ResourceService {
 		resource.setProviderId(provider.getId());
 		resource.setName(name);
 		resource.setResourceType(request.resourceType().trim().toUpperCase());
+		resource.setQuantity(request.quantity());
 		resource.setDescription(blankToNull(request.description()));
 		resource.setStatus(EntityStatus.ACTIVE);
 

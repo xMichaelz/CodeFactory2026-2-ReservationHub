@@ -18,6 +18,7 @@ public record CreateProviderRequestDTO(
 		@NotBlank @Size(max = 100) String lastName,
 		@Size(max = 30) String phone,
 		@NotBlank @Size(max = 200) String businessName,
+		@NotBlank @Size(max = 100) String serviceType,
 		@Size(max = 1000) String description,
 		@Size(max = 300) String address
 ) {
