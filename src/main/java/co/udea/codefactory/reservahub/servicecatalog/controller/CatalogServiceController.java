@@ -1,6 +1,7 @@
 package co.udea.codefactory.reservahub.servicecatalog.controller;
 
 import co.udea.codefactory.reservahub.servicecatalog.DTO.CreateServiceRequestDTO;
+import co.udea.codefactory.reservahub.servicecatalog.DTO.LinkResourcesRequestDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.ServiceResponseDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.UpdateServiceRequestDTO;
 import co.udea.codefactory.reservahub.servicecatalog.service.CatalogServiceService;
@@ -49,5 +50,13 @@ public class CatalogServiceController {
 	@Operation(summary = "Logically deactivate an owned service")
 	public ResponseEntity<ServiceResponseDTO> deactivate(@PathVariable UUID id) {
 		return ResponseEntity.ok(catalogServiceService.deactivate(id));
+	}
+
+	@PostMapping("/{id}/resources")
+	@Operation(summary = "Associate resources of the provider to an owned service")
+	public ResponseEntity<Void> linkResources(@PathVariable UUID id,
+			@Valid @RequestBody LinkResourcesRequestDTO request) {
+		catalogServiceService.linkResources(id, request);
+		return ResponseEntity.status(HttpStatus.CREATED).build();
 	}
 }

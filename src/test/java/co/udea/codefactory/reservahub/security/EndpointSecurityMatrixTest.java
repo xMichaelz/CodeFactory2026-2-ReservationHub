@@ -55,6 +55,7 @@ class EndpointSecurityMatrixTest extends AbstractIntegrationTest {
 			"POST /api/v1/services", Set.of(PROVIDER),
 			"PUT /api/v1/services/{id}", Set.of(PROVIDER),
 			"PATCH /api/v1/services/{id}/deactivate", Set.of(PROVIDER),
+			"POST /api/v1/services/{id}/resources", Set.of(PROVIDER),
 			"POST /api/v1/schedules", Set.of(PROVIDER),
 			"POST /api/v1/schedules/{id}/blocks", Set.of(PROVIDER),
 			"POST /api/v1/resources", Set.of(PROVIDER));
