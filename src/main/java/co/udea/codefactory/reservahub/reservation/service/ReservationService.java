@@ -3,6 +3,7 @@ package co.udea.codefactory.reservahub.reservation.service;
 import co.udea.codefactory.reservahub.audit.AuditLogger;
 import co.udea.codefactory.reservahub.provider.entity.Provider;
 import co.udea.codefactory.reservahub.provider.repository.ProviderRepository;
+import co.udea.codefactory.reservahub.reservation.DTO.CancelReservationRequestDTO;
 import co.udea.codefactory.reservahub.reservation.DTO.CreateReservationRequestDTO;
 import co.udea.codefactory.reservahub.reservation.DTO.ReservationResponseDTO;
 import co.udea.codefactory.reservahub.reservation.entity.Reservation;
@@ -113,6 +114,58 @@ public class ReservationService {
 		auditLogger.info("RESERVATION_CREATED", "reservationId=" + saved.getId() + " serviceId=" + service.getId()
 				+ " clientId=" + clientId + " actorId=" + actor.userId() + " date=" + saved.getReservationDate()
 				+ " start=" + saved.getStartTime());
+		return reservationMapper.toResponse(saved, service, provider);
+	}
+
+	/**
+	 * Cancela una reserva confirmada y futura. El cliente cancela las suyas; el proveedor las de su agenda y con
+	 * motivo obligatorio (HU-14, HU-15). El horario vuelve a salir libre porque la disponibilidad solo cuenta
+	 * reservas confirmadas.
+	 */
+	@Transactional
+	public ReservationResponseDTO cancel(UUID id, CancelReservationRequestDTO request) {
+		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
+		Reservation reservation = reservationRepository.findById(id)
+				.orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
+		boolean byProvider = actor.hasRole(Role.PROVIDER);
+		if (byProvider) {
+			if (!providerRepository.existsByIdAndUserId(reservation.getProviderId(), actor.userId())) {
+				throw new ForbiddenException("The reservation does not belong to the provider");
+			}
+		} else if (!reservation.getClientId().equals(actor.userId())) {
+			throw new ForbiddenException("The reservation does not belong to the client");
+		}
+		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+			throw new ConflictException("The reservation is already cancelled");
+		}
+		if (!reservation.getReservationDate().atTime(reservation.getStartTime()).isAfter(availabilityService.now())) {
+			throw badRequest("Only future reservations can be cancelled");
+		}
+		String reason = request == null || request.reason() == null ? null : request.reason().strip();
+		if (byProvider && (reason == null || reason.isEmpty())) {
+			throw badRequest("A reason is required when a provider cancels a reservation");
+		}
+
+		reservation.setStatus(byProvider ? ReservationStatus.CANCELLED_BY_PROVIDER
+				: ReservationStatus.CANCELLED_BY_CLIENT);
+		Reservation saved = reservationRepository.save(reservation);
+
+		ReservationHistory history = new ReservationHistory();
+		history.setReservationId(saved.getId());
+		history.setAction(ReservationAction.CANCELLED);
+		history.setActorUserId(actor.userId());
+		history.setReason(reason == null || reason.isEmpty() ? null : reason);
+		history.setOldDate(saved.getReservationDate());
+		history.setOldStart(saved.getStartTime());
+		history.setOldEnd(saved.getEndTime());
+		historyRepository.save(history);
+
+		auditLogger.info("RESERVATION_CANCELLED", "reservationId=" + saved.getId() + " actorId=" + actor.userId()
+				+ " status=" + saved.getStatus());
+		CatalogService service = catalogServiceRepository.findById(saved.getServiceId())
+				.orElseThrow(() -> new ResourceNotFoundException("Service not found"));
+		Provider provider = providerRepository.findById(saved.getProviderId())
+				.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
 		return reservationMapper.toResponse(saved, service, provider);
 	}
 

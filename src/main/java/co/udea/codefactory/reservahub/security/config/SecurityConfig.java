@@ -57,6 +57,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/schedules/**").hasRole("PROVIDER")
 						.requestMatchers("/api/v1/resources/**").hasRole("PROVIDER")
 						.requestMatchers(HttpMethod.POST, "/api/v1/reservations").hasAnyRole("CLIENT", "PROVIDER")
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/cancel").hasAnyRole("CLIENT", "PROVIDER")
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(ex -> ex
