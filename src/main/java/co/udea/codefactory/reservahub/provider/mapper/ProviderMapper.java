@@ -16,6 +16,7 @@ public class ProviderMapper {
 				user.getFirstName(),
 				user.getLastName(),
 				provider.getBusinessName(),
+				provider.getServiceType(),
 				provider.getDescription(),
 				provider.getAddress(),
 				provider.getStatus(),

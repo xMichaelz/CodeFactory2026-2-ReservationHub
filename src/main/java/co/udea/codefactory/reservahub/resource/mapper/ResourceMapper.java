@@ -13,6 +13,7 @@ public class ResourceMapper {
 				resource.getProviderId(),
 				resource.getName(),
 				resource.getResourceType(),
+				resource.getQuantity(),
 				resource.getDescription(),
 				resource.getStatus(),
 				resource.getCreatedAt()

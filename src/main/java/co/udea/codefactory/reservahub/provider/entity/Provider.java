@@ -26,6 +26,9 @@ public class Provider {
 	@Column(name = "business_name", nullable = false, unique = true, length = 200)
 	private String businessName;
 
+	@Column(name = "service_type", nullable = false, length = 100)
+	private String serviceType;
+
 	@Column(length = 1000)
 	private String description;
 
@@ -82,6 +85,14 @@ public class Provider {
 
 	public void setBusinessName(String businessName) {
 		this.businessName = businessName;
+	}
+
+	public String getServiceType() {
+		return serviceType;
+	}
+
+	public void setServiceType(String serviceType) {
+		this.serviceType = serviceType;
 	}
 
 	public String getDescription() {

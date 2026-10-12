@@ -51,6 +51,7 @@ public class ProviderService {
 		Provider provider = new Provider();
 		provider.setUserId(user.getId());
 		provider.setBusinessName(businessName);
+		provider.setServiceType(request.serviceType().trim());
 		provider.setDescription(blankToNull(request.description()));
 		provider.setAddress(blankToNull(request.address()));
 		provider.setStatus(EntityStatus.ACTIVE);
