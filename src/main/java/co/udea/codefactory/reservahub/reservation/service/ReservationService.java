@@ -21,8 +21,11 @@ import co.udea.codefactory.reservahub.shared.enums.Role;
 import co.udea.codefactory.reservahub.shared.exception.BusinessException;
 import co.udea.codefactory.reservahub.shared.exception.ConflictException;
 import co.udea.codefactory.reservahub.shared.exception.ErrorCodes;
+import co.udea.codefactory.reservahub.shared.exception.ForbiddenException;
 import co.udea.codefactory.reservahub.shared.exception.ResourceNotFoundException;
 import co.udea.codefactory.reservahub.shared.time.TimeRange;
+import co.udea.codefactory.reservahub.user.entity.User;
+import co.udea.codefactory.reservahub.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,11 +43,12 @@ public class ReservationService {
 	private final AvailabilityService availabilityService;
 	private final ReservationMapper reservationMapper;
 	private final AuditLogger auditLogger;
+	private final UserRepository userRepository;
 
 	public ReservationService(ReservationRepository reservationRepository,
 			ReservationHistoryRepository historyRepository, CatalogServiceRepository catalogServiceRepository,
 			ProviderRepository providerRepository, AvailabilityService availabilityService,
-			ReservationMapper reservationMapper, AuditLogger auditLogger) {
+			ReservationMapper reservationMapper, AuditLogger auditLogger, UserRepository userRepository) {
 		this.reservationRepository = reservationRepository;
 		this.historyRepository = historyRepository;
 		this.catalogServiceRepository = catalogServiceRepository;
@@ -52,6 +56,7 @@ public class ReservationService {
 		this.availabilityService = availabilityService;
 		this.reservationMapper = reservationMapper;
 		this.auditLogger = auditLogger;
+		this.userRepository = userRepository;
 	}
 
 	/**
@@ -62,10 +67,9 @@ public class ReservationService {
 	@Transactional
 	public ReservationResponseDTO create(CreateReservationRequestDTO request) {
 		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
-		UUID clientId = clientFor(actor, request);
-
 		CatalogService service = catalogServiceRepository.findById(request.serviceId())
 				.orElseThrow(() -> new ResourceNotFoundException("Service not found"));
+		UUID clientId = clientFor(actor, request, service);
 		if (service.getStatus() != EntityStatus.ACTIVE) {
 			throw badRequest("The service is not active");
 		}
@@ -112,15 +116,29 @@ public class ReservationService {
 		return reservationMapper.toResponse(saved, service, provider);
 	}
 
-	/** El cliente reserva para sí; el proveedor debe indicar para qué cliente reserva (HU-13 lo valida). */
-	private static UUID clientFor(AuthenticatedUser actor, CreateReservationRequestDTO request) {
-		if (actor.hasRole(Role.PROVIDER)) {
-			if (request.clientId() == null) {
-				throw badRequest("clientId is required when a provider creates a reservation");
+	/**
+	 * El cliente solo reserva para sí. El proveedor indica el cliente (existente, activo y con rol CLIENT) y debe ser
+	 * el dueño del servicio (HU-13).
+	 */
+	private UUID clientFor(AuthenticatedUser actor, CreateReservationRequestDTO request, CatalogService service) {
+		if (!actor.hasRole(Role.PROVIDER)) {
+			if (request.clientId() != null && !request.clientId().equals(actor.userId())) {
+				throw new ForbiddenException("A client can only create reservations for themselves");
 			}
-			return request.clientId();
+			return actor.userId();
 		}
-		return actor.userId();
+		if (!providerRepository.existsByIdAndUserId(service.getProviderId(), actor.userId())) {
+			throw new ForbiddenException("The service does not belong to the provider");
+		}
+		if (request.clientId() == null) {
+			throw badRequest("clientId is required when a provider creates a reservation");
+		}
+		User client = userRepository.findById(request.clientId())
+				.orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+		if (client.getRole() != Role.CLIENT || client.getStatus() != EntityStatus.ACTIVE) {
+			throw badRequest("The user is not an active client");
+		}
+		return client.getId();
 	}
 
 	private static BusinessException badRequest(String message) {
