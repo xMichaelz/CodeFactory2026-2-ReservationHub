@@ -44,6 +44,12 @@ public class User {
 	@Column(nullable = false, length = 20)
 	private EntityStatus status;
 
+	@Column(name = "failed_attempts", nullable = false)
+	private int failedAttempts;
+
+	@Column(name = "locked_until")
+	private Instant lockedUntil;
+
 	@Column(name = "created_at", nullable = false)
 	private Instant createdAt;
 
@@ -130,6 +136,22 @@ public class User {
 
 	public void setStatus(EntityStatus status) {
 		this.status = status;
+	}
+
+	public int getFailedAttempts() {
+		return failedAttempts;
+	}
+
+	public void setFailedAttempts(int failedAttempts) {
+		this.failedAttempts = failedAttempts;
+	}
+
+	public Instant getLockedUntil() {
+		return lockedUntil;
+	}
+
+	public void setLockedUntil(Instant lockedUntil) {
+		this.lockedUntil = lockedUntil;
 	}
 
 	public Instant getCreatedAt() {
