@@ -52,7 +52,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/providers").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 						.requestMatchers("/api/v1/auth/logout").authenticated()
-						.requestMatchers("/api/v1/services/**").hasRole("PROVIDER")
+						.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").hasAnyRole("CLIENT", "PROVIDER")						.requestMatchers("/api/v1/services/**").hasRole("PROVIDER")
 						.requestMatchers("/api/v1/schedules/**").hasRole("PROVIDER")
 						.requestMatchers("/api/v1/resources/**").hasRole("PROVIDER")
 						.anyRequest().authenticated()
