@@ -59,7 +59,8 @@ class EndpointSecurityMatrixTest extends AbstractIntegrationTest {
 			Map.entry("GET /api/v1/services/{serviceId}/availability", Set.of(CLIENT, PROVIDER)),
 			Map.entry("POST /api/v1/schedules", Set.of(PROVIDER)),
 			Map.entry("POST /api/v1/schedules/{id}/blocks", Set.of(PROVIDER)),
-			Map.entry("POST /api/v1/resources", Set.of(PROVIDER)));
+			Map.entry("POST /api/v1/resources", Set.of(PROVIDER)),
+			Map.entry("POST /api/v1/reservations", Set.of(CLIENT, PROVIDER)));
 
 	@Autowired
 	private ApplicationContext context;

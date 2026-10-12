@@ -16,3 +16,4 @@
 | [ADR-012](ADR-012.md) | Manejo uniforme de errores | Aceptado |
 | [ADR-013](ADR-013.md) | Estrategia de observabilidad | Aceptado |
 | [ADR-014](ADR-014.md) | Docker y Docker Compose | Aceptado |
+| [ADR-015](ADR-015.md) | Concurrencia al crear reservas (bloqueo pesimista por proveedor) | Aceptado |

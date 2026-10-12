@@ -74,34 +74,53 @@ public class AvailabilityService {
 		CatalogService service = catalogServiceRepository.findById(serviceId)
 				.orElseThrow(() -> new ResourceNotFoundException("Service not found"));
 
-		LocalDateTime now = LocalDateTime.now(businessZone);
+		LocalDateTime now = now();
 		List<RequiredResource> required = requiredResources(serviceId);
 		Map<UUID, Set<UUID>> resourcesByService = new HashMap<>();
 		resourcesByService.put(serviceId, idsOf(required));
 
 		List<AvailabilityResponseDTO.Day> days = new ArrayList<>();
 		for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
-			List<AttentionSchedule> schedules = scheduleRepository.findByProviderIdAndDayOfWeek(
-					service.getProviderId(), co.udea.codefactory.reservahub.shared.enums.DayOfWeek
-							.valueOf(date.getDayOfWeek().name()));
-			List<TimeRange> windows = schedules.stream()
-					.map(s -> new TimeRange(s.getStartTime(), s.getEndTime())).toList();
-			final LocalDate day = date;
-			List<TimeRange> blocks = schedules.stream()
-					.flatMap(s -> blockRepository.findByScheduleIdAndBlockDate(s.getId(), day).stream())
-					.map(b -> new TimeRange(b.getStartTime(), b.getEndTime())).toList();
-			List<BookedSlot> bookings = bookingsOf(service.getProviderId(), date, resourcesByService);
-
-			List<TimeRange> free = AvailabilityCalculator.calculate(AvailabilityQuery.builder().date(date).now(now)
-					.serviceActive(service.getStatus() == EntityStatus.ACTIVE)
-					.durationMinutes(service.getDurationMinutes()).windows(windows).blocks(blocks)
-					.bookings(bookings).resources(required).build());
+			List<TimeRange> free = freeSlots(service, date, now, required, resourcesByService);
 			if (!free.isEmpty()) {
 				days.add(new AvailabilityResponseDTO.Day(date, free.stream()
 						.map(r -> new AvailabilityResponseDTO.Slot(r.start(), r.end())).toList()));
 			}
 		}
 		return new AvailabilityResponseDTO(serviceId, days);
+	}
+
+	/** Hora actual en la zona del negocio. */
+	public LocalDateTime now() {
+		return LocalDateTime.now(businessZone);
+	}
+
+	/**
+	 * Huecos libres del servicio en un día, leyendo la agenda y las reservas confirmadas en el momento de la
+	 * llamada. Quien reserva la llama con el proveedor bloqueado para que el resultado no cambie antes de guardar.
+	 */
+	public List<TimeRange> freeSlots(CatalogService service, LocalDate date, LocalDateTime now) {
+		List<RequiredResource> required = requiredResources(service.getId());
+		Map<UUID, Set<UUID>> resourcesByService = new HashMap<>();
+		resourcesByService.put(service.getId(), idsOf(required));
+		return freeSlots(service, date, now, required, resourcesByService);
+	}
+
+	private List<TimeRange> freeSlots(CatalogService service, LocalDate date, LocalDateTime now,
+			List<RequiredResource> required, Map<UUID, Set<UUID>> resourcesByService) {
+		List<AttentionSchedule> schedules = scheduleRepository.findByProviderIdAndDayOfWeek(service.getProviderId(),
+				co.udea.codefactory.reservahub.shared.enums.DayOfWeek.valueOf(date.getDayOfWeek().name()));
+		List<TimeRange> windows = schedules.stream()
+				.map(s -> new TimeRange(s.getStartTime(), s.getEndTime())).toList();
+		List<TimeRange> blocks = schedules.stream()
+				.flatMap(s -> blockRepository.findByScheduleIdAndBlockDate(s.getId(), date).stream())
+				.map(b -> new TimeRange(b.getStartTime(), b.getEndTime())).toList();
+		List<BookedSlot> bookings = bookingsOf(service.getProviderId(), date, resourcesByService);
+
+		return AvailabilityCalculator.calculate(AvailabilityQuery.builder().date(date).now(now)
+				.serviceActive(service.getStatus() == EntityStatus.ACTIVE)
+				.durationMinutes(service.getDurationMinutes()).windows(windows).blocks(blocks)
+				.bookings(bookings).resources(required).build());
 	}
 
 	private List<RequiredResource> requiredResources(UUID serviceId) {
