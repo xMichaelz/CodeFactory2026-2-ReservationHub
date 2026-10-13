@@ -24,3 +24,8 @@
 - recurso duplicado
 
 Detalle de contrato de errores en `docs/api/errors.md`.
+
+## Sprint 2 y lecturas
+
+`postman/ReservaHub-Sprint2.postman_collection.json` recorre HU-11 a HU-16 en orden; su carpeta final
+«Lecturas» consulta el catálogo, las reservas de Ana y la agenda del proveedor (detalle en `docs/api/lecturas.md`).
