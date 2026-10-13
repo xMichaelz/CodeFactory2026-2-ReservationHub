@@ -33,3 +33,16 @@ Cada elemento es un `ReservationResponseDTO` (igual que la respuesta de crear re
 
 Pruebas: `ReadEndpointsTest` y filas en `EndpointSecurityMatrixTest`. Postman: carpeta «Lecturas» de
 `postman/ReservaHub-Sprint2.postman_collection.json` (al final del recorrido).
+
+## Lecturas del proveedor (F2)
+
+Todas exigen rol `PROVIDER` y devuelven solo lo propio.
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /api/v1/services/mine` | Servicios (activos e inactivos) por nombre, cada uno con `resources[]` asociados. |
+| `GET /api/v1/resources/mine` | Recursos por nombre. |
+| `GET /api/v1/schedules/mine` | Ventanas de atención por día y hora, cada una con `blocks[]` (por fecha y hora). |
+| `GET /api/v1/users/lookup?email=` | `{id, name}` de un CLIENT activo (sin distinguir mayúsculas). Email inexistente o de otro rol → 404. |
+
+CORS: `app.cors.allowed-origins` (env `CORS_ALLOWED_ORIGINS`, por defecto `http://localhost:5173`) para `/api/**`; métodos GET/POST/PUT/PATCH/DELETE/OPTIONS, cabeceras Authorization/Content-Type/Accept.

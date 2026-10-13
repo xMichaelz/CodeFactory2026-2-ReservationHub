@@ -4,6 +4,8 @@ import co.udea.codefactory.reservahub.audit.AuditLogger;
 import co.udea.codefactory.reservahub.shared.enums.EntityStatus;
 import co.udea.codefactory.reservahub.shared.enums.Role;
 import co.udea.codefactory.reservahub.shared.exception.ConflictException;
+import co.udea.codefactory.reservahub.shared.exception.ResourceNotFoundException;
+import co.udea.codefactory.reservahub.user.DTO.ClientLookupDTO;
 import co.udea.codefactory.reservahub.user.DTO.CreateUserRequestDTO;
 import co.udea.codefactory.reservahub.user.DTO.UserResponseDTO;
 import co.udea.codefactory.reservahub.user.entity.User;
@@ -77,5 +79,14 @@ public class UserService {
 			return null;
 		}
 		return value.trim();
+	}
+
+	/** Búsqueda de un cliente activo por email; cualquier otro caso es 404 para no revelar qué cuentas existen. */
+	@Transactional(readOnly = true)
+	public ClientLookupDTO lookupClient(String email) {
+		User user = userRepository.findByEmailIgnoreCase(email.trim())
+				.filter(u -> u.getRole() == Role.CLIENT && u.getStatus() == EntityStatus.ACTIVE)
+				.orElseThrow(() -> new ResourceNotFoundException("Client not found"));
+		return new ClientLookupDTO(user.getId(), (user.getFirstName() + " " + user.getLastName()).trim());
 	}
 }

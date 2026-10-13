@@ -15,6 +15,8 @@ public interface CatalogServiceRepository extends JpaRepository<CatalogService, 
 
 	boolean existsByProviderIdAndNameIgnoreCaseAndIdNot(UUID providerId, String name, UUID id);
 
+	List<CatalogService> findByProviderIdOrderByNameAsc(UUID providerId);
+
 	Optional<CatalogService> findByIdAndProviderId(UUID id, UUID providerId);
 
 	/** Servicios activos de proveedores activos, ordenados por proveedor y nombre. */

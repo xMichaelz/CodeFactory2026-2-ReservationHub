@@ -64,7 +64,11 @@ class EndpointSecurityMatrixTest extends AbstractIntegrationTest {
 			Map.entry("PATCH /api/v1/reservations/{id}/cancel", Set.of(CLIENT, PROVIDER)),
 			Map.entry("PATCH /api/v1/reservations/{id}/reschedule", Set.of(CLIENT, PROVIDER)),
 			Map.entry("GET /api/v1/catalog/services", Set.of(CLIENT, PROVIDER)),
-			Map.entry("GET /api/v1/reservations/mine", Set.of(CLIENT, PROVIDER)));
+			Map.entry("GET /api/v1/reservations/mine", Set.of(CLIENT, PROVIDER)),
+			Map.entry("GET /api/v1/services/mine", Set.of(PROVIDER)),
+			Map.entry("GET /api/v1/resources/mine", Set.of(PROVIDER)),
+			Map.entry("GET /api/v1/schedules/mine", Set.of(PROVIDER)),
+			Map.entry("GET /api/v1/users/lookup", Set.of(PROVIDER)));
 
 	@Autowired
 	private ApplicationContext context;
