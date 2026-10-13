@@ -15,8 +15,10 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -63,6 +65,24 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.badRequest()
 				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed", details,
 						traceId(request)));
+	}
+
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	public ResponseEntity<ApiErrorResponse> handleMissingParam(MissingServletRequestParameterException ex,
+			HttpServletRequest request) {
+		return ResponseEntity.badRequest()
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed",
+						List.of(ex.getParameterName() + ": is required"), traceId(request)));
+	}
+
+	/** Parámetro de consulta o de ruta que no se puede convertir (fecha mal escrita, UUID inválido...). */
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ApiErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
+			HttpServletRequest request) {
+		String expected = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "valid value";
+		return ResponseEntity.badRequest()
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed",
+						List.of(ex.getName() + ": invalid value, expected " + expected), traceId(request)));
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
