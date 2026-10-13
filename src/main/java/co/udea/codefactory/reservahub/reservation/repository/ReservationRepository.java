@@ -40,4 +40,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
 			""")
 	List<Reservation> findConfirmedOverlappingForClient(@Param("clientId") UUID clientId,
 			@Param("date") LocalDate date, @Param("start") LocalTime start, @Param("end") LocalTime end);
+
+	/** Reservas del cliente entre dos fechas (inclusive), en orden cronológico. */
+	List<Reservation> findByClientIdAndReservationDateBetweenOrderByReservationDateAscStartTimeAsc(UUID clientId,
+			LocalDate from, LocalDate to);
+
+	/** Agenda del proveedor entre dos fechas (inclusive), en orden cronológico. */
+	List<Reservation> findByProviderIdAndReservationDateBetweenOrderByReservationDateAscStartTimeAsc(UUID providerId,
+			LocalDate from, LocalDate to);
 }

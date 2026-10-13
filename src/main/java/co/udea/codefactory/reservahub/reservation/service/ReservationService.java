@@ -32,11 +32,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class ReservationService {
+
+	static final int MAX_RANGE_DAYS = 31;
 
 	private final ReservationRepository reservationRepository;
 	private final ReservationHistoryRepository historyRepository;
@@ -223,6 +230,42 @@ public class ReservationService {
 				+ " from=" + history.getOldDate() + "T" + history.getOldStart() + " to=" + saved.getReservationDate()
 				+ "T" + saved.getStartTime());
 		return reservationMapper.toResponse(saved, service, provider);
+	}
+
+	/**
+	 * Reservas de cualquier estado entre dos fechas (máximo {@value #MAX_RANGE_DAYS} días): las propias para el
+	 * cliente, la agenda completa para el proveedor.
+	 */
+	@Transactional(readOnly = true)
+	public List<ReservationResponseDTO> listMine(LocalDate from, LocalDate to) {
+		if (from.isAfter(to)) {
+			throw badRequest("'from' must not be after 'to'");
+		}
+		if (from.plusDays(MAX_RANGE_DAYS - 1).isBefore(to)) {
+			throw badRequest("The range cannot exceed " + MAX_RANGE_DAYS + " days");
+		}
+		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
+		List<Reservation> reservations;
+		if (actor.hasRole(Role.PROVIDER)) {
+			Provider provider = providerRepository.findByUserId(actor.userId())
+					.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+			reservations = reservationRepository
+					.findByProviderIdAndReservationDateBetweenOrderByReservationDateAscStartTimeAsc(provider.getId(),
+							from, to);
+		} else {
+			reservations = reservationRepository
+					.findByClientIdAndReservationDateBetweenOrderByReservationDateAscStartTimeAsc(actor.userId(), from,
+							to);
+		}
+		Map<UUID, CatalogService> services = catalogServiceRepository
+				.findAllById(reservations.stream().map(Reservation::getServiceId).distinct().toList()).stream()
+				.collect(Collectors.toMap(CatalogService::getId, Function.identity()));
+		Map<UUID, Provider> providers = providerRepository
+				.findAllById(reservations.stream().map(Reservation::getProviderId).distinct().toList()).stream()
+				.collect(Collectors.toMap(Provider::getId, Function.identity()));
+		return reservations.stream()
+				.map(r -> reservationMapper.toResponse(r, services.get(r.getServiceId()), providers.get(r.getProviderId())))
+				.toList();
 	}
 
 	/**
