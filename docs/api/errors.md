@@ -32,3 +32,18 @@ El header de respuesta `X-Trace-Id` coincide con `traceId` cuando el filtro de o
 - Cuando el bloqueo vence, el contador vuelve a 0. Un login correcto también lo pone en 0.
 - Un email que no existe, o una cuenta inactiva, siempre responde **401** `UNAUTHORIZED` con el mensaje genérico `Invalid credentials` y no se bloquea nunca.
 - En la auditoría quedan las acciones `LOGIN_FAILED` y `LOGIN_LOCKED`.
+
+## Parámetros de consulta o de ruta inválidos
+
+Un parámetro obligatorio ausente (p. ej. `GET /api/v1/reservations/mine` sin `from`) o uno que no se puede convertir (fecha que no es ISO `yyyy-MM-dd`, id que no es UUID) responde **400** `VALIDATION_ERROR` con el parámetro en `details`:
+
+```json
+{
+  "errorCode": "VALIDATION_ERROR",
+  "message": "Request validation failed",
+  "details": ["from: invalid value, expected LocalDate"],
+  "traceId": "uuid"
+}
+```
+
+Si falta: `"details": ["from: is required"]`.
