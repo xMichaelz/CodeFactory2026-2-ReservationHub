@@ -9,5 +9,7 @@ import java.util.UUID;
 
 public interface AttentionScheduleRepository extends JpaRepository<AttentionSchedule, UUID> {
 
+	List<AttentionSchedule> findByProviderId(UUID providerId);
+
 	List<AttentionSchedule> findByProviderIdAndDayOfWeek(UUID providerId, DayOfWeek dayOfWeek);
 }

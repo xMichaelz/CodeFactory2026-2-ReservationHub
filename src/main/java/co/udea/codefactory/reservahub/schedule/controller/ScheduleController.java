@@ -2,6 +2,7 @@ package co.udea.codefactory.reservahub.schedule.controller;
 
 import co.udea.codefactory.reservahub.schedule.DTO.CreateScheduleBlockRequestDTO;
 import co.udea.codefactory.reservahub.schedule.DTO.CreateScheduleRequestDTO;
+import co.udea.codefactory.reservahub.schedule.DTO.ProviderScheduleDTO;
 import co.udea.codefactory.reservahub.schedule.DTO.ScheduleBlockResponseDTO;
 import co.udea.codefactory.reservahub.schedule.DTO.ScheduleResponseDTO;
 import co.udea.codefactory.reservahub.schedule.service.ScheduleService;
@@ -11,12 +12,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -29,6 +32,12 @@ public class ScheduleController {
 
 	public ScheduleController(ScheduleService scheduleService) {
 		this.scheduleService = scheduleService;
+	}
+
+	@GetMapping("/mine")
+	@Operation(summary = "List the attention schedules (with blocks) of the authenticated provider")
+	public ResponseEntity<List<ProviderScheduleDTO>> mine() {
+		return ResponseEntity.ok(scheduleService.listMine());
 	}
 
 	@PostMapping
