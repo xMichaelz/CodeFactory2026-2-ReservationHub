@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ReservaHub Sprint 2",
-    "description": "Reservas HU-11 a HU-16: disponibilidad, reservar, doble reserva, reprogramar y cancelar. Ejecutar en orden con el Runner.",
+    "description": "Reservas HU-11 a HU-16: disponibilidad, reservar, doble reserva, reprogramar y cancelar. Carpeta «Lecturas»: catálogo, mis reservas y agenda. Ejecutar en orden con el Runner.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -691,6 +691,110 @@
               "pm.test('3 huecos', () => pm.expect(pm.response.json().days[0].slots.length).to.eql(3));"
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "Lecturas",
+      "item": [
+        {
+          "name": "Catálogo (Ana)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anaToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/services"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('incluye el servicio creado', () => pm.expect(pm.response.json().map(s => s.id)).to.include(pm.collectionVariables.get('serviceId')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mis reservas de Ana",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anaToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/reservations/mine?from={{day}}&to={{day}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('2 reservas canceladas', () => { const r = pm.response.json(); pm.expect(r.length).to.eql(2); r.forEach(x => pm.expect(x.status).to.match(/^CANCELLED_/)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Agenda del proveedor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{provToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/reservations/mine?from={{day}}&to={{day}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('2 reservas de su agenda', () => pm.expect(pm.response.json().length).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rango de 32 días → 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{anaToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/reservations/mine?from=2030-01-01&to=2030-02-01"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

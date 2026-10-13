@@ -6,6 +6,7 @@ import co.udea.codefactory.reservahub.provider.service.ProviderService;
 import co.udea.codefactory.reservahub.security.SecurityUtils;
 import co.udea.codefactory.reservahub.resource.entity.Resource;
 import co.udea.codefactory.reservahub.resource.repository.ResourceRepository;
+import co.udea.codefactory.reservahub.servicecatalog.DTO.CatalogEntryDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.CreateServiceRequestDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.LinkResourcesRequestDTO;
 import co.udea.codefactory.reservahub.servicecatalog.entity.ServiceResource;
@@ -158,5 +159,11 @@ public class CatalogServiceService {
 			return null;
 		}
 		return value.trim();
+	}
+
+	/** Catálogo para reservar: solo servicios activos de proveedores activos. */
+	@Transactional(readOnly = true)
+	public List<CatalogEntryDTO> listCatalog() {
+		return catalogServiceRepository.findActiveCatalog();
 	}
 }
