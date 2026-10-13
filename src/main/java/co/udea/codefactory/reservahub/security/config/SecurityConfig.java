@@ -23,12 +23,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
 
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, LockoutProperties.class})
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -51,9 +52,13 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/providers").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 						.requestMatchers("/api/v1/auth/logout").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").hasAnyRole("CLIENT", "PROVIDER")
 						.requestMatchers("/api/v1/services/**").hasRole("PROVIDER")
 						.requestMatchers("/api/v1/schedules/**").hasRole("PROVIDER")
 						.requestMatchers("/api/v1/resources/**").hasRole("PROVIDER")
+						.requestMatchers(HttpMethod.POST, "/api/v1/reservations").hasAnyRole("CLIENT", "PROVIDER")
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/cancel").hasAnyRole("CLIENT", "PROVIDER")
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/reschedule").hasAnyRole("CLIENT", "PROVIDER")
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(ex -> ex
@@ -67,6 +72,11 @@ public class SecurityConfig {
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
+	}
+
+	@Bean
+	Clock clock() {
+		return Clock.systemUTC();
 	}
 
 	@Bean

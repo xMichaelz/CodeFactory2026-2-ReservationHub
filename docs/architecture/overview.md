@@ -1,4 +1,4 @@
-# Arquitectura ReservaHub — Sprint 1
+# Arquitectura ReservaHub — Sprint 2
 
 ## 1. Arquitectura general
 
@@ -20,7 +20,7 @@ No hay microservicios, API Gateway ni bases de datos por módulo.
 
 Un solo proceso desplegable contiene módulos de negocio con paquetes separados y dependencias controladas hacia `shared` y `security`.
 
-## 3. Módulos Sprint 1
+## 3. Módulos (Sprint 1 y 2)
 
 | Módulo | Responsabilidad |
 |--------|-----------------|
@@ -33,7 +33,8 @@ Un solo proceso desplegable contiene módulos de negocio con paquetes separados 
 | `shared` | Errores, enums, DTO de error |
 | `audit` | Logging de auditoría mínimo |
 | `observability` | TraceId + Actuator |
-| `reservation` / `report` | Reservados (sin endpoints Sprint 1) |
+| `reservation` | Disponibilidad (HU-11), reservar como cliente o proveedor (HU-12, HU-13), cancelar (HU-14, HU-15) y reprogramar (HU-16); historial de cambios. La concurrencia se resuelve bloqueando al proveedor (`SELECT … FOR UPDATE`, ADR-015) |
+| `report` | Reservado (sin endpoints) |
 
 ## 4. Dependencias entre módulos (conceptual)
 

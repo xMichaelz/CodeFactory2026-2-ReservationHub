@@ -18,6 +18,7 @@ import co.udea.codefactory.reservahub.shared.exception.ConflictException;
 import co.udea.codefactory.reservahub.shared.exception.ErrorCodes;
 import co.udea.codefactory.reservahub.shared.exception.ForbiddenException;
 import co.udea.codefactory.reservahub.shared.exception.ResourceNotFoundException;
+import co.udea.codefactory.reservahub.shared.time.TimeRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -124,11 +125,8 @@ public class ScheduleService {
 		}
 	}
 
-	/**
-	 * Half-open style overlap: [aStart, aEnd) overlaps [bStart, bEnd) if they share any instant.
-	 */
 	static boolean overlaps(LocalTime aStart, LocalTime aEnd, LocalTime bStart, LocalTime bEnd) {
-		return aStart.isBefore(bEnd) && bStart.isBefore(aEnd);
+		return TimeRange.overlaps(aStart, aEnd, bStart, bEnd);
 	}
 
 	private static String blankToNull(String value) {

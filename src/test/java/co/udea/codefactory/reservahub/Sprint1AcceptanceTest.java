@@ -93,6 +93,7 @@ class Sprint1AcceptanceTest extends AbstractIntegrationTest {
 								  "firstName": "Luis",
 								  "lastName": "Proveedor",
 								  "businessName": "Clinica %s",
+								  "serviceType": "Salud",
 								  "description": "Consultorio general",
 								  "address": "Calle 1 # 2-3"
 								}
@@ -269,6 +270,7 @@ class Sprint1AcceptanceTest extends AbstractIntegrationTest {
 								{
 								  "name": "Consultorio 1",
 								  "resourceType": "ROOM",
+								  "quantity": 2,
 								  "description": "Sala principal"
 								}
 								"""))
@@ -282,7 +284,8 @@ class Sprint1AcceptanceTest extends AbstractIntegrationTest {
 						.content("""
 								{
 								  "name": "Consultorio 1",
-								  "resourceType": "ROOM"
+								  "resourceType": "ROOM",
+								  "quantity": 1
 								}
 								"""))
 				.andExpect(status().isConflict());
