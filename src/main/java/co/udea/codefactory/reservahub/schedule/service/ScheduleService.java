@@ -5,6 +5,7 @@ import co.udea.codefactory.reservahub.provider.entity.Provider;
 import co.udea.codefactory.reservahub.provider.service.ProviderService;
 import co.udea.codefactory.reservahub.schedule.DTO.CreateScheduleBlockRequestDTO;
 import co.udea.codefactory.reservahub.schedule.DTO.CreateScheduleRequestDTO;
+import co.udea.codefactory.reservahub.schedule.DTO.ProviderScheduleDTO;
 import co.udea.codefactory.reservahub.schedule.DTO.ScheduleBlockResponseDTO;
 import co.udea.codefactory.reservahub.schedule.DTO.ScheduleResponseDTO;
 import co.udea.codefactory.reservahub.schedule.entity.AttentionSchedule;
@@ -18,12 +19,17 @@ import co.udea.codefactory.reservahub.shared.exception.ConflictException;
 import co.udea.codefactory.reservahub.shared.exception.ErrorCodes;
 import co.udea.codefactory.reservahub.shared.exception.ForbiddenException;
 import co.udea.codefactory.reservahub.shared.exception.ResourceNotFoundException;
+import co.udea.codefactory.reservahub.shared.time.TimeRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -102,6 +108,23 @@ public class ScheduleService {
 		return mapper.toBlockResponse(saved);
 	}
 
+	@Transactional(readOnly = true)
+	public List<ProviderScheduleDTO> listMine() {
+		Provider provider = currentProvider();
+		List<AttentionSchedule> schedules = new ArrayList<>(scheduleRepository.findByProviderId(provider.getId()));
+		schedules.sort(Comparator.comparing(AttentionSchedule::getDayOfWeek).thenComparing(AttentionSchedule::getStartTime));
+		if (schedules.isEmpty()) {
+			return List.of();
+		}
+		Map<UUID, List<ScheduleBlockResponseDTO>> blocksBySchedule = blockRepository
+				.findByScheduleIdInOrderByBlockDateAscStartTimeAsc(schedules.stream().map(AttentionSchedule::getId).toList())
+				.stream().collect(Collectors.groupingBy(ScheduleBlock::getScheduleId,
+						Collectors.mapping(mapper::toBlockResponse, Collectors.toList())));
+		return schedules.stream().map(s -> new ProviderScheduleDTO(s.getId(), s.getProviderId(), s.getDayOfWeek(),
+				s.getStartTime(), s.getEndTime(), s.getCreatedAt(), blocksBySchedule.getOrDefault(s.getId(), List.of())))
+				.toList();
+	}
+
 	private AttentionSchedule requireOwnedSchedule(UUID scheduleId) {
 		Provider provider = currentProvider();
 		AttentionSchedule schedule = scheduleRepository.findById(scheduleId)
@@ -124,11 +147,8 @@ public class ScheduleService {
 		}
 	}
 
-	/**
-	 * Half-open style overlap: [aStart, aEnd) overlaps [bStart, bEnd) if they share any instant.
-	 */
 	static boolean overlaps(LocalTime aStart, LocalTime aEnd, LocalTime bStart, LocalTime bEnd) {
-		return aStart.isBefore(bEnd) && bStart.isBefore(aEnd);
+		return TimeRange.overlaps(aStart, aEnd, bStart, bEnd);
 	}
 
 	private static String blankToNull(String value) {

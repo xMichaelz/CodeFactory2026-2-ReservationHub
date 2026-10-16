@@ -29,6 +29,9 @@ public class Resource {
 	@Column(name = "resource_type", nullable = false, length = 50)
 	private String resourceType;
 
+	@Column(nullable = false)
+	private Integer quantity;
+
 	@Column(length = 1000)
 	private String description;
 
@@ -90,6 +93,14 @@ public class Resource {
 
 	public void setResourceType(String resourceType) {
 		this.resourceType = resourceType;
+	}
+
+	public Integer getQuantity() {
+		return quantity;
+	}
+
+	public void setQuantity(Integer quantity) {
+		this.quantity = quantity;
 	}
 
 	public String getDescription() {

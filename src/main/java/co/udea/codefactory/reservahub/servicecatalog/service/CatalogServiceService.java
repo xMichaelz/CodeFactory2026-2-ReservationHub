@@ -4,7 +4,16 @@ import co.udea.codefactory.reservahub.audit.AuditLogger;
 import co.udea.codefactory.reservahub.provider.entity.Provider;
 import co.udea.codefactory.reservahub.provider.service.ProviderService;
 import co.udea.codefactory.reservahub.security.SecurityUtils;
+import co.udea.codefactory.reservahub.resource.entity.Resource;
+import co.udea.codefactory.reservahub.resource.repository.ResourceRepository;
+import co.udea.codefactory.reservahub.servicecatalog.DTO.CatalogEntryDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.CreateServiceRequestDTO;
+import co.udea.codefactory.reservahub.resource.DTO.ResourceResponseDTO;
+import co.udea.codefactory.reservahub.resource.mapper.ResourceMapper;
+import co.udea.codefactory.reservahub.servicecatalog.DTO.LinkResourcesRequestDTO;
+import co.udea.codefactory.reservahub.servicecatalog.DTO.ProviderServiceDTO;
+import co.udea.codefactory.reservahub.servicecatalog.entity.ServiceResource;
+import co.udea.codefactory.reservahub.servicecatalog.repository.ServiceResourceRepository;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.ServiceResponseDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.UpdateServiceRequestDTO;
 import co.udea.codefactory.reservahub.servicecatalog.entity.CatalogService;
@@ -20,6 +29,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -29,9 +42,16 @@ public class CatalogServiceService {
 	private final ProviderService providerService;
 	private final CatalogServiceMapper mapper;
 	private final AuditLogger auditLogger;
+	private final ResourceRepository resourceRepository;
+	private final ServiceResourceRepository serviceResourceRepository;
+	private final ResourceMapper resourceMapper;
 
 	public CatalogServiceService(CatalogServiceRepository catalogServiceRepository, ProviderService providerService,
-			CatalogServiceMapper mapper, AuditLogger auditLogger) {
+			CatalogServiceMapper mapper, AuditLogger auditLogger, ResourceRepository resourceRepository,
+			ServiceResourceRepository serviceResourceRepository, ResourceMapper resourceMapper) {
+		this.resourceMapper = resourceMapper;
+		this.resourceRepository = resourceRepository;
+		this.serviceResourceRepository = serviceResourceRepository;
 		this.catalogServiceRepository = catalogServiceRepository;
 		this.providerService = providerService;
 		this.mapper = mapper;
@@ -91,6 +111,30 @@ public class CatalogServiceService {
 		return mapper.toResponse(saved);
 	}
 
+	@Transactional
+	public void linkResources(UUID serviceId, LinkResourcesRequestDTO request) {
+		CatalogService service = requireOwnedService(serviceId);
+		List<UUID> ids = List.copyOf(new LinkedHashSet<>(request.resourceIds()));
+		List<Resource> resources = resourceRepository.findAllById(ids);
+		if (resources.size() != ids.size()) {
+			throw new ResourceNotFoundException("Resource not found");
+		}
+		for (Resource resource : resources) {
+			if (!resource.getProviderId().equals(service.getProviderId())) {
+				throw new ForbiddenException("You are not allowed to use this resource");
+			}
+			if (resource.getStatus() != EntityStatus.ACTIVE) {
+				throw new BusinessException(ErrorCodes.BAD_REQUEST, "Resource is inactive and cannot be used",
+						HttpStatus.BAD_REQUEST.value());
+			}
+		}
+		if (serviceResourceRepository.existsByIdServiceIdAndIdResourceIdIn(serviceId, ids)) {
+			throw new ConflictException("Resource already associated with this service");
+		}
+		ids.forEach(id -> serviceResourceRepository.save(new ServiceResource(serviceId, id)));
+		auditLogger.info("SERVICE_RESOURCES_LINKED", "serviceId=" + serviceId + " resources=" + ids.size());
+	}
+
 	@Transactional(readOnly = true)
 	public CatalogService requireActiveService(UUID serviceId) {
 		CatalogService service = catalogServiceRepository.findById(serviceId)
@@ -122,5 +166,32 @@ public class CatalogServiceService {
 			return null;
 		}
 		return value.trim();
+	}
+
+	/** Servicios del proveedor autenticado (activos e inactivos) con sus recursos asociados. */
+	@Transactional(readOnly = true)
+	public List<ProviderServiceDTO> listMine() {
+		Provider provider = currentProvider();
+		List<CatalogService> services = catalogServiceRepository.findByProviderIdOrderByNameAsc(provider.getId());
+		if (services.isEmpty()) {
+			return List.of();
+		}
+		Map<UUID, ResourceResponseDTO> resources = resourceRepository
+				.findByProviderIdOrderByNameAsc(provider.getId()).stream()
+				.collect(Collectors.toMap(Resource::getId, resourceMapper::toResponse));
+		Map<UUID, List<ResourceResponseDTO>> byService = serviceResourceRepository
+				.findByIdServiceIdIn(services.stream().map(CatalogService::getId).toList()).stream()
+				.filter(link -> resources.containsKey(link.getId().resourceId()))
+				.collect(Collectors.groupingBy(link -> link.getId().serviceId(),
+						Collectors.mapping(link -> resources.get(link.getId().resourceId()), Collectors.toList())));
+		return services.stream().map(s -> new ProviderServiceDTO(s.getId(), s.getProviderId(), s.getName(),
+				s.getDescription(), s.getDurationMinutes(), s.getPrice(), s.getStatus(), s.getCreatedAt(),
+				s.getUpdatedAt(), byService.getOrDefault(s.getId(), List.of()))).toList();
+	}
+
+	/** Catálogo para reservar: solo servicios activos de proveedores activos. */
+	@Transactional(readOnly = true)
+	public List<CatalogEntryDTO> listCatalog() {
+		return catalogServiceRepository.findActiveCatalog();
 	}
 }

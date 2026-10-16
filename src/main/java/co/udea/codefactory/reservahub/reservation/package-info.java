@@ -1,5 +1,4 @@
 /**
- * Reservation module reserved for future sprints (booking lifecycle).
- * Structure kept for modular monolith coherence; no Sprint 1 endpoints.
+ * Reservation module (EP-03): reservations, change history and availability calculation.
  */
 package co.udea.codefactory.reservahub.reservation;

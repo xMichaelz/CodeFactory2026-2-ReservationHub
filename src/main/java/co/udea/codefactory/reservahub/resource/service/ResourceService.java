@@ -12,6 +12,7 @@ import co.udea.codefactory.reservahub.security.SecurityUtils;
 import co.udea.codefactory.reservahub.shared.enums.EntityStatus;
 import co.udea.codefactory.reservahub.shared.exception.ConflictException;
 import org.springframework.stereotype.Service;
+import java.util.List;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -42,12 +43,19 @@ public class ResourceService {
 		resource.setProviderId(provider.getId());
 		resource.setName(name);
 		resource.setResourceType(request.resourceType().trim().toUpperCase());
+		resource.setQuantity(request.quantity());
 		resource.setDescription(blankToNull(request.description()));
 		resource.setStatus(EntityStatus.ACTIVE);
 
 		Resource saved = resourceRepository.save(resource);
 		auditLogger.info("RESOURCE_CREATED", "resourceId=" + saved.getId() + " providerId=" + provider.getId());
 		return mapper.toResponse(saved);
+	}
+
+	@Transactional(readOnly = true)
+	public List<ResourceResponseDTO> listMine() {
+		return resourceRepository.findByProviderIdOrderByNameAsc(currentProvider().getId()).stream()
+				.map(mapper::toResponse).toList();
 	}
 
 	private Provider currentProvider() {

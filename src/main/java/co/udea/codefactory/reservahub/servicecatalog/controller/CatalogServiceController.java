@@ -1,6 +1,8 @@
 package co.udea.codefactory.reservahub.servicecatalog.controller;
 
 import co.udea.codefactory.reservahub.servicecatalog.DTO.CreateServiceRequestDTO;
+import co.udea.codefactory.reservahub.servicecatalog.DTO.LinkResourcesRequestDTO;
+import co.udea.codefactory.reservahub.servicecatalog.DTO.ProviderServiceDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.ServiceResponseDTO;
 import co.udea.codefactory.reservahub.servicecatalog.DTO.UpdateServiceRequestDTO;
 import co.udea.codefactory.reservahub.servicecatalog.service.CatalogServiceService;
@@ -10,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -30,6 +34,12 @@ public class CatalogServiceController {
 
 	public CatalogServiceController(CatalogServiceService catalogServiceService) {
 		this.catalogServiceService = catalogServiceService;
+	}
+
+	@GetMapping("/mine")
+	@Operation(summary = "List the services (with resources) of the authenticated provider")
+	public ResponseEntity<List<ProviderServiceDTO>> mine() {
+		return ResponseEntity.ok(catalogServiceService.listMine());
 	}
 
 	@PostMapping
@@ -49,5 +59,13 @@ public class CatalogServiceController {
 	@Operation(summary = "Logically deactivate an owned service")
 	public ResponseEntity<ServiceResponseDTO> deactivate(@PathVariable UUID id) {
 		return ResponseEntity.ok(catalogServiceService.deactivate(id));
+	}
+
+	@PostMapping("/{id}/resources")
+	@Operation(summary = "Associate resources of the provider to an owned service")
+	public ResponseEntity<Void> linkResources(@PathVariable UUID id,
+			@Valid @RequestBody LinkResourcesRequestDTO request) {
+		catalogServiceService.linkResources(id, request);
+		return ResponseEntity.status(HttpStatus.CREATED).build();
 	}
 }
