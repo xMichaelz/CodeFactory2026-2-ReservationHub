@@ -68,7 +68,7 @@ public class AvailabilityService {
 		if (from.isAfter(to)) {
 			throw badRequest("'from' must not be after 'to'");
 		}
-		if (from.plusDays(MAX_RANGE_DAYS - 1).isBefore(to)) {
+		if (from.plusDays(MAX_RANGE_DAYS - 1L).isBefore(to)) {
 			throw badRequest("The range cannot exceed " + MAX_RANGE_DAYS + " days");
 		}
 		CatalogService service = catalogServiceRepository.findById(serviceId)

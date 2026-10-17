@@ -53,6 +53,9 @@ class AuthServiceTest {
 	private AuditLogger auditLogger;
 
 	private static final Instant NOW = Instant.parse("2026-10-12T10:00:00Z");
+	private static final LoginRequestDTO CORRECT_LOGIN = new LoginRequestDTO("ana@example.com", "Secret123");
+	private static final LoginRequestDTO WRONG_PASSWORD = new LoginRequestDTO("ana@example.com", "wrong");
+	private static final LoginRequestDTO UNKNOWN_EMAIL = new LoginRequestDTO("nadie@example.com", "wrong");
 
 	private AuthService authService;
 
@@ -77,7 +80,7 @@ class AuthServiceTest {
 		when(jwtService.generateToken(user)).thenReturn("jwt-token");
 		when(jwtService.getExpirationMs()).thenReturn(3600000L);
 
-		var response = authService.login(new LoginRequestDTO("ana@example.com", "Secret123"));
+		var response = authService.login(CORRECT_LOGIN);
 
 		assertEquals("jwt-token", response.accessToken());
 		assertEquals(Role.CLIENT, response.role());
@@ -90,7 +93,7 @@ class AuthServiceTest {
 		when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
 		assertThrows(UnauthorizedException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+				() -> authService.login(WRONG_PASSWORD));
 	}
 
 	@Test
@@ -101,13 +104,13 @@ class AuthServiceTest {
 
 		for (int i = 0; i < 5; i++) {
 			assertThrows(UnauthorizedException.class,
-					() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+					() -> authService.login(WRONG_PASSWORD));
 		}
 		assertEquals(NOW.plus(Duration.ofMinutes(15)), user.getLockedUntil());
 
 		lenient().when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
 		BusinessException ex = assertThrows(BusinessException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "Secret123")));
+				() -> authService.login(CORRECT_LOGIN));
 		assertEquals(ErrorCodes.ACCOUNT_LOCKED, ex.getErrorCode());
 		assertEquals(423, ex.getHttpStatus());
 		verify(jwtService, never()).generateToken(user);
@@ -122,7 +125,7 @@ class AuthServiceTest {
 		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
 
 		BusinessException ex = assertThrows(BusinessException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+				() -> authService.login(WRONG_PASSWORD));
 		assertEquals(ErrorCodes.ACCOUNT_LOCKED, ex.getErrorCode());
 		assertEquals(5, user.getFailedAttempts());
 		assertEquals(NOW.plus(Duration.ofMinutes(10)), user.getLockedUntil());
@@ -154,7 +157,7 @@ class AuthServiceTest {
 		when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
 		assertThrows(UnauthorizedException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+				() -> authService.login(WRONG_PASSWORD));
 		assertEquals(1, user.getFailedAttempts());
 		assertNull(user.getLockedUntil());
 	}
@@ -167,7 +170,7 @@ class AuthServiceTest {
 		when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
 		when(jwtService.generateToken(user)).thenReturn("jwt-token");
 
-		authService.login(new LoginRequestDTO("ana@example.com", "Secret123"));
+		authService.login(CORRECT_LOGIN);
 
 		assertEquals(0, user.getFailedAttempts());
 		assertNull(user.getLockedUntil());
@@ -179,7 +182,7 @@ class AuthServiceTest {
 
 		for (int i = 0; i < 7; i++) {
 			UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-					() -> authService.login(new LoginRequestDTO("nadie@example.com", "wrong")));
+					() -> authService.login(UNKNOWN_EMAIL));
 			assertEquals(ErrorCodes.UNAUTHORIZED, ex.getErrorCode());
 			assertEquals("Invalid credentials", ex.getMessage());
 		}
@@ -192,7 +195,7 @@ class AuthServiceTest {
 		when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
 		UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+				() -> authService.login(WRONG_PASSWORD));
 		assertEquals("Invalid credentials", ex.getMessage());
 		assertEquals(1, user.getFailedAttempts());
 	}

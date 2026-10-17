@@ -23,6 +23,8 @@ import java.time.Instant;
 @Service
 public class AuthService {
 
+	private static final String USER_ID = "userId=";
+
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
@@ -56,7 +58,7 @@ public class AuthService {
 		Instant now = clock.instant();
 		if (user.getLockedUntil() != null) {
 			if (now.isBefore(user.getLockedUntil())) {
-				auditLogger.info("LOGIN_LOCKED", "userId=" + user.getId());
+				auditLogger.info("LOGIN_LOCKED", USER_ID + user.getId());
 				throw new AccountLockedException(user.getLockedUntil());
 			}
 			user.setLockedUntil(null);
@@ -74,7 +76,7 @@ public class AuthService {
 		}
 
 		String token = jwtService.generateToken(user);
-		auditLogger.info("LOGIN_SUCCESS", "userId=" + user.getId());
+		auditLogger.info("LOGIN_SUCCESS", USER_ID + user.getId());
 		return new LoginResponseDTO(
 				token,
 				"Bearer",
@@ -89,9 +91,9 @@ public class AuthService {
 		user.setFailedAttempts(user.getFailedAttempts() + 1);
 		if (user.getFailedAttempts() >= lockout.getMaxAttempts()) {
 			user.setLockedUntil(now.plus(Duration.ofMinutes(lockout.getDurationMinutes())));
-			auditLogger.info("LOGIN_LOCKED", "userId=" + user.getId() + " until=" + user.getLockedUntil());
+			auditLogger.info("LOGIN_LOCKED", USER_ID + user.getId() + " until=" + user.getLockedUntil());
 		} else {
-			auditLogger.info("LOGIN_FAILED", "userId=" + user.getId() + " attempts=" + user.getFailedAttempts());
+			auditLogger.info("LOGIN_FAILED", USER_ID + user.getId() + " attempts=" + user.getFailedAttempts());
 		}
 		userRepository.save(user);
 	}

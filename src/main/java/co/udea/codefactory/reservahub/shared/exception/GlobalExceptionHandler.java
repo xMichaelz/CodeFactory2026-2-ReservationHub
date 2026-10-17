@@ -29,6 +29,7 @@ import java.util.UUID;
 public class GlobalExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+	private static final String VALIDATION_FAILED = "Request validation failed";
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
@@ -52,7 +53,7 @@ public class GlobalExceptionHandler {
 				.map(this::formatFieldError)
 				.toList();
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed", details,
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED, details,
 						traceId(request)));
 	}
 
@@ -63,7 +64,7 @@ public class GlobalExceptionHandler {
 				.map(v -> v.getPropertyPath() + ": " + v.getMessage())
 				.toList();
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed", details,
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED, details,
 						traceId(request)));
 	}
 
@@ -71,7 +72,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiErrorResponse> handleMissingParam(MissingServletRequestParameterException ex,
 			HttpServletRequest request) {
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed",
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED,
 						List.of(ex.getParameterName() + ": is required"), traceId(request)));
 	}
 
@@ -81,7 +82,7 @@ public class GlobalExceptionHandler {
 			HttpServletRequest request) {
 		String expected = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "valid value";
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed",
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED,
 						List.of(ex.getName() + ": invalid value, expected " + expected), traceId(request)));
 	}
 
@@ -114,7 +115,9 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
-		log.error("Unhandled error [{}]", traceId(request), ex);
+		if (log.isErrorEnabled()) {
+			log.error("Unhandled error [{}]", traceId(request), ex);
+		}
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 				.body(new ApiErrorResponse(ErrorCodes.INTERNAL_ERROR, "Unexpected server error", traceId(request)));
 	}
