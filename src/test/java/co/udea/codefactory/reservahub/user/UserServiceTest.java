@@ -68,7 +68,8 @@ class UserServiceTest {
 	void registerClientRejectsDuplicateEmail() {
 		when(userRepository.existsByEmailIgnoreCase("ana@example.com")).thenReturn(true);
 
-		assertThrows(ConflictException.class, () -> userService.registerClient(
-				new CreateUserRequestDTO("ana@example.com", "Secret123", "Ana", "Pérez", null)));
+		CreateUserRequestDTO request = new CreateUserRequestDTO("ana@example.com", "Secret123", "Ana", "Pérez", null);
+
+		assertThrows(ConflictException.class, () -> userService.registerClient(request));
 	}
 }
