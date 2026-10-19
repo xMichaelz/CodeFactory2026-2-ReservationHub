@@ -36,11 +36,12 @@ Variables:
 
 | Variable | Descripción |
 |----------|-------------|
-| `DB_URL` | JDBC URL |
+| `DB_URL` | JDBC URL. Si no se define, se arma con `DB_HOST`, `DB_PORT` y `DB_NAME` |
 | `DB_USERNAME` / `DB_PASSWORD` | Credenciales DB |
 | `JWT_SECRET` | Secreto HS256 (≥ 32 bytes) |
 | `JWT_EXPIRATION_MS` | Expiración del token |
-| `SERVER_PORT` | Puerto HTTP (default 8080) |
+| `SERVER_PORT` | Puerto HTTP local (default 8080). En Render manda `PORT` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del frontend, separados por coma |
 
 ## Ejecución local
 
@@ -74,6 +75,24 @@ Flyway aplicará `V1__initial_schema.sql` al iniciar.
 ```bash
 docker compose up --build
 ```
+
+## Despliegue en Render
+
+`render.yaml` crea la API (Docker, Java 25) y PostgreSQL 16 en la región `oregon`. Flyway aplica las migraciones al arrancar, igual que en local. Render genera `JWT_SECRET` y conecta la base por la red privada.
+
+1. El blueprint tiene que estar en `main`.
+2. Abre [este enlace de Blueprint](https://render.com/deploy?repo=https://github.com/xMichaelz/CodeFactory2026-2-ReservationHub) e inicia sesión en Render.
+3. Confirma el plan gratuito. Render crea `reservahub-api` y `reservahub-db`.
+
+Cuando termine el deploy:
+
+- Health: `https://<servicio>.onrender.com/actuator/health`
+- Swagger: `https://<servicio>.onrender.com/swagger-ui.html`
+- OpenAPI: `https://<servicio>.onrender.com/v3/api-docs`
+
+Si el frontend no corre en `http://localhost:5173`, cambia `CORS_ALLOWED_ORIGINS` en el dashboard (orígenes separados por coma) y vuelve a desplegar.
+
+En el plan gratuito la API se suspende tras un rato sin tráfico: el primer request después de eso tarda más. La base gratuita de Render caduca a los 30 días.
 
 ## Tests
 
