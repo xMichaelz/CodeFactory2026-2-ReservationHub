@@ -1,5 +1,13 @@
 # ReservaHub
 
+[![CI](https://github.com/xMichaelz/CodeFactory2026-2-ReservationHub/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/xMichaelz/CodeFactory2026-2-ReservationHub/actions/workflows/sonarcloud.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=alert_status)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=coverage)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=bugs)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=security_rating)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+
 Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 2).
 
 Arquitectura: **monolito modular** (una sola aplicación Spring Boot), organizada por dominios de negocio con capas `controller / DTO / entity / mapper / repository / service`.
