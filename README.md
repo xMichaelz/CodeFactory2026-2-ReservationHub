@@ -1,6 +1,6 @@
 # ReservaHub
 
-Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 1).
+Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 2).
 
 Arquitectura: **monolito modular** (una sola aplicación Spring Boot), organizada por dominios de negocio con capas `controller / DTO / entity / mapper / repository / service`.
 
@@ -107,7 +107,7 @@ En el plan gratuito la API se suspende tras un rato sin tráfico: el primer requ
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 - Health: http://localhost:8080/actuator/health
 
-## Endpoints principales (HU-01 .. HU-10)
+## Endpoints principales (HU-01 .. HU-16)
 
 | Método | Ruta | HU |
 |--------|------|----|
@@ -121,8 +121,16 @@ En el plan gratuito la API se suspende tras un rato sin tráfico: el primer requ
 | POST | `/api/v1/schedules` | HU-08 |
 | POST | `/api/v1/schedules/{id}/blocks` | HU-09 |
 | POST | `/api/v1/resources` | HU-10 |
+| GET | `/api/v1/services/{id}/availability` | HU-11 |
+| POST | `/api/v1/reservations` | HU-12, HU-13 |
+| PATCH | `/api/v1/reservations/{id}/cancel` | HU-14, HU-15 |
+| PATCH | `/api/v1/reservations/{id}/reschedule` | HU-16 |
 
-Colección Postman: `postman/ReservaHub-Sprint1.postman_collection.json`
+HU-12 es la reserva del cliente para sí mismo. HU-13 es el mismo `POST`: el proveedor envía el `clientId`. En la cancelación, el proveedor debe indicar motivo (HU-15).
+
+Priorización, roles y política de `/api/v1`: `docs/api/apis-priorizadas.md`.
+
+Colecciones Postman: `postman/ReservaHub-Sprint1.postman_collection.json` y `postman/ReservaHub-Sprint2.postman_collection.json`.
 
 ## Estructura del proyecto
 
@@ -130,7 +138,8 @@ Colección Postman: `postman/ReservaHub-Sprint1.postman_collection.json`
 reservahub/
 ├── src/main/java/co/udea/codefactory/reservahub/
 │   ├── user/ provider/ servicecatalog/ schedule/ resource/
-│   ├── reservation/ report/          # placeholders Sprint futuro
+│   ├── reservation/                  # Sprint 2
+│   ├── report/                       # placeholder Sprint futuro
 │   ├── security/ audit/ observability/ shared/
 ├── src/main/resources/db/migration/
 ├── docs/adr/ docs/architecture/ docs/api/
