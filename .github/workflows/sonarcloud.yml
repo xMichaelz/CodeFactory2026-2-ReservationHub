@@ -1,9 +1,18 @@
-name: SonarQube
+name: CI
+
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - develop
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build and analyze
@@ -16,7 +25,7 @@ jobs:
         uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
         with:
           java-version: 25
-          distribution: 'temurin' # Alternative distribution options are available.
+          distribution: 'temurin'
       - name: Cache SonarQube packages
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
@@ -29,7 +38,9 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - name: Build and analyze
+      - name: Compile, test and JaCoCo report
+        run: chmod +x mvnw && ./mvnw -B verify
+      - name: Analyze with SonarCloud
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=arge2004_reservationhubanalysis
+        run: ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=arge2004_reservationhubanalysis -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
