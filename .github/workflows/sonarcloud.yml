@@ -43,4 +43,9 @@ jobs:
       - name: Analyze with SonarCloud
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=arge2004_reservationhubanalysis -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "SONAR_TOKEN is not available on this run. Dependabot and forks do not receive repository secrets, so SonarCloud is skipped. Compile and tests already passed."
+            exit 0
+          fi
+          ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=arge2004_reservationhubanalysis -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
