@@ -4,11 +4,11 @@ import co.udea.codefactory.reservahub.audit.AuditLogger;
 import co.udea.codefactory.reservahub.security.DTO.LoginRequestDTO;
 import co.udea.codefactory.reservahub.security.config.LockoutProperties;
 import co.udea.codefactory.reservahub.security.jwt.JwtService;
+import co.udea.codefactory.reservahub.security.ratelimit.RequestClientIp;
 import co.udea.codefactory.reservahub.security.service.AuthService;
 import co.udea.codefactory.reservahub.security.service.TokenRevocationService;
 import co.udea.codefactory.reservahub.shared.enums.EntityStatus;
 import co.udea.codefactory.reservahub.shared.enums.Role;
-import co.udea.codefactory.reservahub.shared.exception.BusinessException;
 import co.udea.codefactory.reservahub.shared.exception.ErrorCodes;
 import co.udea.codefactory.reservahub.shared.exception.UnauthorizedException;
 import co.udea.codefactory.reservahub.user.entity.User;
@@ -23,18 +23,19 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -52,21 +53,54 @@ class AuthServiceTest {
 	@Mock
 	private AuditLogger auditLogger;
 
+	@Mock
+	private RequestClientIp clientIp;
+
 	private static final Instant NOW = Instant.parse("2026-10-12T10:00:00Z");
+	private static final String IP_A = "203.0.113.10";
+	private static final String IP_B = "203.0.113.20";
 
 	private AuthService authService;
+	private MutableClock clock;
+	private String ip = IP_A;
 
 	@BeforeEach
 	void setUp() {
-		authService = serviceAt(NOW);
-	}
-
-	private AuthService serviceAt(Instant instant) {
+		clock = new MutableClock(NOW);
+		lenient().when(clientIp.current()).thenAnswer(inv -> ip);
 		LockoutProperties lockout = new LockoutProperties();
 		lockout.setMaxAttempts(5);
 		lockout.setDurationMinutes(15);
-		return new AuthService(userRepository, passwordEncoder, jwtService, tokenRevocationService, auditLogger,
-				lockout, Clock.fixed(instant, ZoneOffset.UTC));
+		authService = new AuthService(userRepository, passwordEncoder, jwtService, tokenRevocationService,
+				auditLogger, lockout, clock, clientIp);
+	}
+
+	/** Reloj que avanza a mano para probar la caducidad del bloqueo. */
+	private static final class MutableClock extends Clock {
+		private Instant now;
+
+		MutableClock(Instant now) {
+			this.now = now;
+		}
+
+		void advance(Duration d) {
+			now = now.plus(d);
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return ZoneOffset.UTC;
+		}
+
+		@Override
+		public Clock withZone(ZoneId zone) {
+			return this;
+		}
+
+		@Override
+		public Instant instant() {
+			return now;
+		}
 	}
 
 	@Test
@@ -94,7 +128,7 @@ class AuthServiceTest {
 	}
 
 	@Test
-	void fiveFailuresLockAccountEvenForCorrectPassword() {
+	void fiveFailuresFromSameIpLockThePairWithGeneric401() {
 		User user = activeUser();
 		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
 		when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
@@ -103,74 +137,95 @@ class AuthServiceTest {
 			assertThrows(UnauthorizedException.class,
 					() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
 		}
-		assertEquals(NOW.plus(Duration.ofMinutes(15)), user.getLockedUntil());
 
 		lenient().when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
-		BusinessException ex = assertThrows(BusinessException.class,
+		UnauthorizedException ex = assertThrows(UnauthorizedException.class,
 				() -> authService.login(new LoginRequestDTO("ana@example.com", "Secret123")));
-		assertEquals(ErrorCodes.ACCOUNT_LOCKED, ex.getErrorCode());
-		assertEquals(423, ex.getHttpStatus());
+		assertEquals(ErrorCodes.UNAUTHORIZED, ex.getErrorCode());
+		assertEquals("Invalid credentials", ex.getMessage());
+		assertEquals(401, ex.getHttpStatus());
 		verify(jwtService, never()).generateToken(user);
-		verify(auditLogger, times(2)).info(eq("LOGIN_LOCKED"), anyString());
+		verify(passwordEncoder, never()).matches("Secret123", "hash");
+		verify(auditLogger, atLeastOnce()).info(eq("LOGIN_LOCKED"), contains("ip=" + IP_A));
 	}
 
 	@Test
-	void lockedAccountDoesNotCountMoreAttempts() {
+	void lockOfOneIpDoesNotAffectAnotherIp() {
+		User user = activeUser();
+		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
+		lenient().when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+		lenient().when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
+		lenient().when(jwtService.generateToken(user)).thenReturn("jwt-token");
+
+		for (int i = 0; i < 5; i++) {
+			assertThrows(UnauthorizedException.class,
+					() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+		}
+		ip = IP_B;
+
+		assertEquals("jwt-token", authService.login(new LoginRequestDTO("ana@example.com", "Secret123")).accessToken());
+	}
+
+	@Test
+	void pairLockExpiresAfterConfiguredMinutes() {
+		User user = activeUser();
+		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
+		lenient().when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+		lenient().when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
+		lenient().when(jwtService.generateToken(user)).thenReturn("jwt-token");
+
+		for (int i = 0; i < 5; i++) {
+			assertThrows(UnauthorizedException.class,
+					() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+		}
+		clock.advance(Duration.ofMinutes(14));
+		assertThrows(UnauthorizedException.class,
+				() -> authService.login(new LoginRequestDTO("ana@example.com", "Secret123")));
+
+		clock.advance(Duration.ofMinutes(2));
+		assertEquals("jwt-token", authService.login(new LoginRequestDTO("ana@example.com", "Secret123")).accessToken());
+	}
+
+	@Test
+	void persistedLockColumnsNoLongerBlockNorChange() {
 		User user = activeUser();
 		user.setFailedAttempts(5);
 		user.setLockedUntil(NOW.plus(Duration.ofMinutes(10)));
 		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
-
-		BusinessException ex = assertThrows(BusinessException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
-		assertEquals(ErrorCodes.ACCOUNT_LOCKED, ex.getErrorCode());
-		assertEquals(5, user.getFailedAttempts());
-		assertEquals(NOW.plus(Duration.ofMinutes(10)), user.getLockedUntil());
-	}
-
-	@Test
-	void loginWorksAgainAfterLockExpires() {
-		User user = activeUser();
-		user.setFailedAttempts(5);
-		user.setLockedUntil(NOW.plus(Duration.ofMinutes(15)));
-		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
 		when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
 		when(jwtService.generateToken(user)).thenReturn("jwt-token");
 
-		var response = serviceAt(NOW.plus(Duration.ofMinutes(16)))
-				.login(new LoginRequestDTO("ana@example.com", "Secret123"));
-
-		assertEquals("jwt-token", response.accessToken());
-		assertEquals(0, user.getFailedAttempts());
-		assertNull(user.getLockedUntil());
+		assertEquals("jwt-token", authService.login(new LoginRequestDTO("ana@example.com", "Secret123")).accessToken());
+		verify(userRepository, never()).save(any());
 	}
 
 	@Test
-	void failureAfterLockExpiresStartsCountingAgain() {
+	void successfulLoginResetsPairCounter() {
 		User user = activeUser();
-		user.setFailedAttempts(5);
-		user.setLockedUntil(NOW.minus(Duration.ofMinutes(1)));
 		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
-		when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+		lenient().when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+		lenient().when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
+		lenient().when(jwtService.generateToken(user)).thenReturn("jwt-token");
+
+		for (int i = 0; i < 4; i++) {
+			assertThrows(UnauthorizedException.class,
+					() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+		}
+		authService.login(new LoginRequestDTO("ana@example.com", "Secret123"));
+		for (int i = 0; i < 4; i++) {
+			assertThrows(UnauthorizedException.class,
+					() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+		}
+		assertEquals("jwt-token", authService.login(new LoginRequestDTO("ana@example.com", "Secret123")).accessToken());
+	}
+
+	@Test
+	void unknownEmailStillRunsAPasswordComparison() {
+		when(userRepository.findByEmailIgnoreCase("nadie@example.com")).thenReturn(Optional.empty());
 
 		assertThrows(UnauthorizedException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
-		assertEquals(1, user.getFailedAttempts());
-		assertNull(user.getLockedUntil());
-	}
-
-	@Test
-	void successfulLoginResetsCounter() {
-		User user = activeUser();
-		user.setFailedAttempts(4);
-		when(userRepository.findByEmailIgnoreCase("ana@example.com")).thenReturn(Optional.of(user));
-		when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
-		when(jwtService.generateToken(user)).thenReturn("jwt-token");
-
-		authService.login(new LoginRequestDTO("ana@example.com", "Secret123"));
-
-		assertEquals(0, user.getFailedAttempts());
-		assertNull(user.getLockedUntil());
+				() -> authService.login(new LoginRequestDTO("nadie@example.com", "wrong")));
+		verify(passwordEncoder).matches(eq("wrong"), any());
 	}
 
 	@Test
@@ -194,7 +249,7 @@ class AuthServiceTest {
 		UnauthorizedException ex = assertThrows(UnauthorizedException.class,
 				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
 		assertEquals("Invalid credentials", ex.getMessage());
-		assertEquals(1, user.getFailedAttempts());
+		assertEquals(0, user.getFailedAttempts());
 	}
 
 	private User activeUser() {
