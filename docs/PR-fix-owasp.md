@@ -1,6 +1,6 @@
-# fix/owasp → main: corrección de las 13 vulnerabilidades del informe OWASP
+# fix/owasp → develop: corrección de las 13 vulnerabilidades del informe OWASP
 
-Destino: `main` (ya integra lo último de `main`: CI con SonarCloud, Dependabot y `render.yaml`; `develop` va atrás de `main`).
+Destino: `develop`, y de ahí `develop` → `main`. La rama ya integra lo último de `main` (CI con SonarCloud, Dependabot y `render.yaml`), así que este PR también pone `develop` al día con `main`.
 
 Informe de partida: `docs/entregable-arquisoft-sprint2/vulnerabilidades-owasp.md`. Evidencias: `docs/entregable-arquisoft-sprint2/evidencias/` (cada V-xx enlaza a su archivo). Backend: `./mvnw verify` en verde, 148 tests, 0 fallos y 0 omitidos; front: 217 tests, build limpio; e2e 9/9 por HTTPS contra Docker.
 
@@ -34,7 +34,7 @@ Informe de partida: `docs/entregable-arquisoft-sprint2/vulnerabilidades-owasp.md
 
 ## Orden de fusión
 
-1. Backend `fix/owasp` -> `main`.
+1. Backend `fix/owasp` -> `develop`, luego `develop` -> `main`.
 2. Front `fix/owasp` -> `main` (necesita la red y el servicio `app` del backend ya fusionado).
 
 ## Despliegue en Render
