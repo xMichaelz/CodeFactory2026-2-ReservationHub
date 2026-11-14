@@ -1,6 +1,5 @@
 package co.udea.codefactory.reservahub.security.owasp;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
 
@@ -28,7 +27,6 @@ class DeploymentConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-07 · O7")
 	@SuppressWarnings("unchecked")
 	void composeDoesNotPublishDbNorApp() throws Exception {
 		Map<String, Object> services = services("compose.yaml");
@@ -69,7 +67,6 @@ class DeploymentConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-10 · O7")
 	void everyBaseImageIsPinnedByDigest() throws Exception {
 		List<String> failures = dockerfileLines().stream()
 				.filter(l -> l.toUpperCase().startsWith("FROM "))
@@ -78,7 +75,6 @@ class DeploymentConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-10 · O7")
 	void finalStageRunsAsNonRootUser() throws Exception {
 		List<String> lines = dockerfileLines();
 		int lastFrom = -1;
@@ -98,7 +94,6 @@ class DeploymentConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-11 · O7")
 	@SuppressWarnings("unchecked")
 	void dependabotWatchesMavenDockerAndActions() throws Exception {
 		Path file = ROOT.resolve(".github/dependabot.yml");
@@ -111,7 +106,6 @@ class DeploymentConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-11 · O7")
 	void someWorkflowRunsOsvScannerAndTrivy() throws Exception {
 		Path dir = ROOT.resolve(".github/workflows");
 		StringBuilder all = new StringBuilder();
@@ -124,5 +118,27 @@ class DeploymentConfigTest {
 		}
 		assertTrue(all.indexOf("osv-scanner") >= 0, "Ningún workflow ejecuta osv-scanner");
 		assertTrue(all.indexOf("trivy") >= 0, "Ningún workflow ejecuta trivy");
+	}
+
+	@Test
+	void flywayUsesOwnerAndAppUsesRestrictedUser() throws Exception {
+		java.util.Properties props = new java.util.Properties();
+		try (var in = Files.newBufferedReader(ROOT.resolve("src/main/resources/application.properties"))) {
+			props.load(in);
+		}
+		String flywayUser = props.getProperty("spring.flyway.user");
+		String appUser = props.getProperty("spring.datasource.username");
+		assertTrue(flywayUser != null && !flywayUser.isBlank(), "Falta spring.flyway.user (dueño de la BD para las migraciones)");
+		assertTrue(!flywayUser.equals(appUser), "Flyway y la app no pueden usar el mismo usuario: " + flywayUser);
+		assertTrue(props.getProperty("spring.flyway.password") != null, "Falta spring.flyway.password");
+		assertTrue(Files.exists(ROOT.resolve("docker/db-init/01-app-user.sh")), "Falta docker/db-init/01-app-user.sh");
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void composeMountsAppUserScript() throws Exception {
+		Map<String, Object> db = (Map<String, Object>) services("compose.yaml").get("db");
+		String volumes = String.valueOf(db.get("volumes"));
+		assertTrue(volumes.contains("db-init"), "El servicio db debe montar docker/db-init: " + volumes);
 	}
 }
