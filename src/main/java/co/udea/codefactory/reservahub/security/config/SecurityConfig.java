@@ -1,7 +1,10 @@
 package co.udea.codefactory.reservahub.security.config;
 
+import co.udea.codefactory.reservahub.audit.AuditLogger;
 import co.udea.codefactory.reservahub.security.jwt.JwtAuthenticationFilter;
 import co.udea.codefactory.reservahub.security.jwt.JwtProperties;
+import co.udea.codefactory.reservahub.security.ratelimit.RateLimitFilter;
+import co.udea.codefactory.reservahub.security.ratelimit.RateLimitProperties;
 import co.udea.codefactory.reservahub.shared.dto.ApiErrorResponse;
 import co.udea.codefactory.reservahub.shared.exception.ErrorCodes;
 import tools.jackson.databind.json.JsonMapper;
@@ -35,14 +38,17 @@ import java.util.UUID;
 
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, LockoutProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, LockoutProperties.class, RateLimitProperties.class})
 public class SecurityConfig {
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final RateLimitFilter rateLimitFilter;
 	private final JsonMapper jsonMapper = JsonMapper.shared();
 
-	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitProperties rateLimitProperties,
+			AuditLogger auditLogger) {
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+		this.rateLimitFilter = new RateLimitFilter(rateLimitProperties, auditLogger);
 	}
 
 	@Bean
@@ -86,7 +92,9 @@ public class SecurityConfig {
 								writeError(response, HttpServletResponse.SC_FORBIDDEN, ErrorCodes.FORBIDDEN,
 										"Access denied"))
 				)
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+				// Límite de peticiones (V-03): tras el JWT (ya hay usuario) y antes de la autorización.
+				.addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
 
 		return http.build();
 	}
