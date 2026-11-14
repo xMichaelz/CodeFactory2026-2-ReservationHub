@@ -1,0 +1,19 @@
+# V-04 · Login: mismo 401 para pareja frenada, clave errónea y correo inexistente; otra IP sigue entrando
+# Fecha: 2026-11-14 10:47 -05 · Stack: compose.yaml en el Mac, por https://localhost:8443 (Nginx -> API), límites activos
+
+$ 5 logins con clave errónea para cli-1794671220@example.com (misma IP)
+{"errorCode":"UNAUTHORIZED","message":"Invalid credentials","details":[],"traceId":"5b91b5bb-bbfc-4a23-b914-c1456e3e4654"}  -> HTTP 401
+{"errorCode":"UNAUTHORIZED","message":"Invalid credentials","details":[],"traceId":"e65cce76-e608-4f52-9fe1-88334c20b087"}  -> HTTP 401
+{"errorCode":"UNAUTHORIZED","message":"Invalid credentials","details":[],"traceId":"9ec109e3-edd5-4113-a551-c75544423fed"}  -> HTTP 401
+{"errorCode":"UNAUTHORIZED","message":"Invalid credentials","details":[],"traceId":"e92964b4-3c45-45af-a8b1-26eede939076"}  -> HTTP 401
+{"errorCode":"UNAUTHORIZED","message":"Invalid credentials","details":[],"traceId":"2a0b11c7-4c3f-47bf-83f5-e8a1ffc81154"}  -> HTTP 401
+$ login con la clave CORRECTA, misma pareja email+IP (frenada)
+{"errorCode":"UNAUTHORIZED","message":"Invalid credentials","details":[],"traceId":"42f79404-9ce7-4122-9f47-5faa60ada88c"}  -> HTTP 401
+$ clave errónea, correo inexistente
+{"errorCode":"UNAUTHORIZED","message":"Invalid credentials","details":[],"traceId":"410acd9c-84af-4853-89e9-13d70e1473ab"}  -> HTTP 401
+$ login correcto desde OTRA IP (X-Forwarded-For 198.51.100.7, directo a la API por la red interna)
+{"accessToken":"<JWT omitido>"}  -> HTTP 200
+
+$ docker logs reservahub-app | grep LOGIN_LOCKED
+LOG {"@timestamp": "2026-11-14T15:47:01.379597257Z", "action": "LOGIN_LOCKED", "actor": "anonymous", "ip": "192.168.65.1", "outcome": "FAILURE", "traceId": "42f79404-9ce7-4122-9f47-5faa60ada88c", "details": "until=2026-11-14T16:02:01.256105924Z"}
+No existe ya el 423 ACCOUNT_LOCKED.

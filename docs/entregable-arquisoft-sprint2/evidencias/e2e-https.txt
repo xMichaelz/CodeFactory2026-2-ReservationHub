@@ -1,0 +1,4 @@
+# E2E contra el stack en Docker (https://localhost:8443)
+# Fecha: 2026-11-14 10:55 -05 · API con RATE_LIMIT_ENABLED=false (override), Nginx con limit_req activo
+$ E2E_BASE_URL=https://localhost:8443 pnpm e2e --reporter=line
+9 passed (17.8s)

@@ -1,0 +1,27 @@
+# V-07 · API y BD sin puertos publicados; BD con usuario sin DDL
+# Fecha: 2026-11-14 10:46 -05 · Stack: docker compose (compose.yaml, sin compose.dev) en el Mac
+
+$ docker compose ps
+NAME             STATUS                        PORTS
+reservahub-app   Up About a minute             8080/tcp
+reservahub-db    Up About a minute (healthy)   5432/tcp
+
+$ docker ps (puertos del host: solo el front 8081/8443)
+reservahub-app  8080/tcp
+reservahub-db  5432/tcp
+reservahub-web  0.0.0.0:8443->8443/tcp, [::]:8443->8443/tcp, 0.0.0.0:8081->8080/tcp, [::]:8081->8080/tcp
+
+$ curl -s --max-time 3 http://localhost:8080/actuator/health ; echo exit=$?
+exit=7
+$ psql -h localhost -p 5433 -U reservahub (desde el host)
+nc 5433 exit=1 (≠0 = puerto cerrado)
+
+$ psql como reservahub_app: DROP TABLE
+ERROR:  must be owner of table users
+$ psql como reservahub_app: CREATE TABLE
+ERROR:  permission denied for schema public
+LINE 1: CREATE TABLE x(id int);
+                     ^
+$ psql como reservahub_app: SELECT (permitido)
+    34
+

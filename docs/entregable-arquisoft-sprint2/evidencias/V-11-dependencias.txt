@@ -1,0 +1,50 @@
+# V-11 · Vigilancia de dependencias
+# Fecha: 2026-11-14 10:53 -05
+
+$ cat .github/dependabot.yml (backend: maven, docker, github-actions)
+  - package-ecosystem: maven
+      interval: weekly
+  - package-ecosystem: docker
+      interval: weekly
+  - package-ecosystem: github-actions
+      interval: weekly
+
+$ cat .github/dependabot.yml (front)
+  - package-ecosystem: "npm"
+      interval: "weekly"
+  - package-ecosystem: "docker"
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+      interval: "weekly"
+
+$ workflows: 
+.github/workflows:
+seguridad.yml
+sonarcloud.yml
+
+/Users/edudelahoz/Desktop/Desarrollo/CodeFactory2026-2-ReservationHub-frontend/.github/workflows:
+seguridad.yml
+12:  osv-scanner:
+18:      - uses: google/osv-scanner-action/osv-scanner-action@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
+22:  trivy:
+30:        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+33:          severity: HIGH,CRITICAL
+35:          exit-code: "1"
+37:        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+40:          severity: HIGH,CRITICAL
+41:          exit-code: "1"
+
+$ osv-scanner scan source -L pom.xml   (osv-scanner 2.7.1, instalado con brew)
+Antes de esta sesión: Total 5 packages affected by 18 known vulnerabilities (4 Critical, 10 High, 4 Medium) en tomcat-embed-core 11.0.24, jackson 2.21.5 y 3.1.5.
+Corrección: pom.xml fija tomcat.version=11.0.25, jackson-2-bom.version=2.21.7, jackson-bom.version=3.1.7.
+Scanned /Users/edudelahoz/Desktop/Desarrollo/CodeFactory2026-2-ReservationHub/pom.xml file and found 23 packages
+No issues found
+
+$ osv-scanner scan source -L pnpm-lock.yaml (front)
+Scanned /Users/edudelahoz/Desktop/Desarrollo/CodeFactory2026-2-ReservationHub-frontend/pnpm-lock.yaml file and found 199 packages
+No issues found
+
+$ pnpm audit (front)
+No known vulnerabilities found
+
+Trivy (imagen): no instalado en local; lo ejecuta el workflow seguridad.yml en CI (queda para CI).

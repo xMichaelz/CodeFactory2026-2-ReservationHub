@@ -23,6 +23,10 @@
 		<jjwt.version>0.12.6</jjwt.version>
 		<springdoc.version>3.1.1</springdoc.version>
 		<bucket4j.version>8.22.0</bucket4j.version>
+		<!-- V-11: versiones parcheadas (OSV-Scanner) sobre las que trae Spring Boot 4.1.1; quitar al subir Spring Boot -->
+		<tomcat.version>11.0.25</tomcat.version>
+		<jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+		<jackson-bom.version>3.1.7</jackson-bom.version>
 		<sonar.organization>arge2004</sonar.organization>
 	</properties>
 
