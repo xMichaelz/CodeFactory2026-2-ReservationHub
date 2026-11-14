@@ -39,7 +39,7 @@ def edge(s,t,label,color='#374151',dashed=0,exit=None,entry=None,pts=None,both=F
     cells.append('<mxCell id="%s" value="%s" style="%s" edge="1" parent="1" source="%s" target="%s">%s</mxCell>'%(i,html.escape(label,quote=True),st,s,t,g))
 
 # Título
-add('<b style="font-size:22px">ReservaHub — Diagrama de despliegue (Sprint 2, tras corrección OWASP)</b><br><span style="font-size:13px;color:#4B5563">Caso 14 CodeF@ctory UdeA · Monolito modular Spring Boot + SPA React · Docker Compose · solo HTTPS hacia fuera</span>',
+add('<b style="font-size:22px">ReservaHub — Arquitectura de despliegue</b><br><span style="font-size:13px;color:#4B5563">Sprint 2 · CodeF@ctory UdeA · Monolito modular Spring Boot y SPA React sobre Docker Compose · Acceso externo únicamente por HTTPS</span>',
     'text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;',40,20,900,60)
 
 # ---- Dispositivo del usuario
@@ -47,43 +47,43 @@ dev=node3d('<b>«device»</b><br>Dispositivo del usuario<br><span style="font-si
 aws('users',20,90,56,'Cliente /<br>Proveedor',dev)
 brw=box('<b>«execution environment»</b><br>Navegador web',20,200,250,200,'#EFF6FF','#3B82F6',dev,font=12)
 icon('googlechrome',190,8,40,'',brw)
-spa=artifact('<b>«artifact»</b> SPA React 19<br>React Router · Vite 8<br>JWT en <i>sessionStorage</i><br>(caduca a los 30 min)',15,80,220,62,brw)
+spa=artifact('<b>«artifact»</b> SPA React 19<br>React Router · Vite 8<br>Token JWT en <i>sessionStorage</i><br>Sesión de 30 minutos',15,80,220,62,brw)
 icon('react',15,150,36,'',brw); icon('vite',60,150,34,'',brw)
 
 # ---- Servidor Docker host
-host=node3d('<b>«device»</b> Servidor de aplicación (Docker host)<br><span style="font-size:11px;color:#6B7280">Linux · Docker Compose: proyectos <i>reservahub</i> (app, db) y <i>reservahub-front</i> (web)<br>red bridge <i>reservahub-backend</i> · contenedores sin root · imágenes fijadas por digest</span>',420,110,880,560,'#F8FAFC','#2496ED')
+host=node3d('<b>«device»</b> Servidor de aplicación (Docker host)<br><span style="font-size:11px;color:#6B7280">Linux · Docker Compose: proyectos <i>reservahub</i> (app, db) y <i>reservahub-front</i> (web)<br>Red interna <i>reservahub-backend</i> · Contenedores sin privilegios de root · Imágenes fijadas por digest</span>',420,110,880,560,'#F8FAFC','#2496ED')
 icon('docker',800,14,52,'',host)
 
-web=box('<b>«container» reservahub-web</b><br><span style="font-size:11px">nginx-unprivileged:1.27-alpine@sha256 · uid 101<br>8443 → 8443 TLS · 8081 → 8080 (301 a https)</span>',25,90,260,420,'#ECFDF5','#009639',host,font=12)
+web=box('<b>«container» reservahub-web</b><br><span style="font-size:11px">nginx-unprivileged:1.27-alpine@sha256 · uid 101<br>8443 → 8443 (TLS)<br>8081 → 8080 (redirige a HTTPS)</span>',25,90,260,420,'#ECFDF5','#009639',host,font=12)
 icon('nginx',200,52,40,'',web)
 artifact('<b>«artifact»</b> dist/ (build estático)<br>index.html + JS/CSS',15,115,230,48,web)
 artifact('<b>«config»</b> nginx.conf<br>TLS 1.2/1.3 · HSTS · CSP · nosniff<br>/api/ → proxy_pass app:8080<br>limit_req 20 r/s → 429',15,170,230,74,web)
-artifact('<b>«secret»</b> ./certs (montado :ro)<br>certificado autofirmado (script)',15,252,230,40,web)
-add('Única puerta de entrada:<br>sirve la SPA y hace de<br><b>reverse proxy</b> hacia la API<br>(un solo origen, sin CORS).','text;html=1;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#065F46;',15,300,230,70,web)
+artifact('<b>«secret»</b> ./certs (montado :ro)<br>Certificado TLS (autofirmado en pruebas)',15,252,230,40,web)
+add('Punto de entrada único:<br>sirve la SPA y actúa como<br><b>proxy inverso</b> hacia la API<br>(mismo origen, sin CORS).','text;html=1;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;fontColor=#065F46;',15,300,230,70,web)
 icon('react',15,370,36,'',web)
 
-app=box('<b>«container» reservahub-app</b><br><span style="font-size:11px">eclipse-temurin:25-jre@sha256 · USER app (10001)<br>solo <i>expose</i> 8080 · sin puerto en el host</span>',315,90,290,420,'#F0FDF4','#6DB33F',host,font=12)
+app=box('<b>«container» reservahub-app</b><br><span style="font-size:11px">eclipse-temurin:25-jre@sha256<br>Usuario no root (UID 10001)<br>Puerto 8080 solo en red interna</span>',315,90,290,420,'#F0FDF4','#6DB33F',host,font=12)
 icon('springboot',200,48,40,'',app); icon('openjdk',245,48,36,'',app)
 artifact('<b>«artifact»</b> reservahub.jar<br>Spring Boot 4.1 · Java 25',15,100,260,46,app)
-mods=add('<b>Monolito modular</b><br>• security (JWT HS256 sin secreto por<br>&nbsp;&nbsp;defecto, RBAC, rate limit Bucket4j)<br>• user · provider<br>• servicecatalog · schedule · resource<br>• reservation (disponibilidad, reservar,<br>&nbsp;&nbsp;cancelar, reprogramar)<br>• audit (JSON + alerta) · observability',
+mods=add('<b>Monolito modular</b><br>• security (JWT HS256, control de acceso<br>&nbsp;&nbsp;por roles, límite de peticiones)<br>• user · provider<br>• servicecatalog · schedule · resource<br>• reservation (disponibilidad, reservar,<br>&nbsp;&nbsp;cancelar, reprogramar)<br>• audit (registro JSON y alertas) · observability',
   'rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#86EFAC;fontSize=11;align=left;verticalAlign=top;spacingLeft=8;spacingTop=4;',15,158,260,145,app)
 artifact('<b>«endpoint»</b> REST /api/v1/**',15,310,260,30,app)
-sw=artifact('<b>«endpoint»</b> Swagger: 404 salvo SWAGGER_ENABLED',15,348,260,30,app)
+sw=artifact('<b>«endpoint»</b> Swagger UI (solo desarrollo)',15,348,260,30,app)
 icon('swagger',238,350,26,'',app)
 artifact('<b>«endpoint»</b> /actuator/health',15,386,260,30,app)
 
-db=box('<b>«container» reservahub-db</b><br><span style="font-size:11px">postgres:16-alpine@sha256<br>sin puerto en el host</span>',635,90,225,420,'#EFF6FF','#4169E1',host,font=12)
+db=box('<b>«container» reservahub-db</b><br><span style="font-size:11px">postgres:16-alpine<br>@sha256<br>Puerto 5432 solo<br>en red interna</span>',635,90,225,420,'#EFF6FF','#4169E1',host,font=12)
 icon('postgresql',165,48,44,'',db)
-schema=add('<b>BD reservahub</b><br>users, providers, services,<br>schedules, blocks, resources,<br>reservations, history,<br>revoked_tokens<br><br><i>API: reservahub_app<br>(solo DML)</i>',
+schema=add('<b>BD reservahub</b><br>users, providers, services,<br>schedules, blocks, resources,<br>reservations, history,<br>revoked_tokens<br><br><i>Usuario de aplicación:<br>reservahub_app (permisos DML)</i>',
   'shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=14;fillColor=#DBEAFE;strokeColor=#4169E1;fontSize=11;fontColor=#1E3A8A;',20,100,185,170,db)
 icon('flyway',20,365,32,'',db)
-add('Flyway V1 … V5<br>(dueño <i>reservahub</i>)',"text;html=1;fontSize=11;align=left;verticalAlign=middle;",58,363,140,36,db)
+add('Migraciones Flyway V1–V5<br>(usuario propietario)',"text;html=1;fontSize=11;align=left;verticalAlign=middle;",58,363,140,36,db)
 vol=add('<b>«volume»</b><br>reservahub_pgdata','shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;size=8;fillColor=#F3F4F6;strokeColor=#9CA3AF;dashed=1;fontSize=11;',40,285,145,60,db)
 
 # ---- Pruebas / QA
 qa=box('<b>Pruebas manuales / QA</b>',40,620,300,130,'#FFF7ED','#FF6C37',font=12)
 pm=icon('postman',25,45,44,'Postman',qa); icon('swagger',125,45,44,'Swagger UI',qa)
-add('Solo desarrollo: compose.dev.yaml','text;html=1;fontSize=10;align=left;verticalAlign=top;fontColor=#9A3412;',15,24,280,20,qa)
+add('Entorno de desarrollo (compose.dev.yaml)','text;html=1;fontSize=10;align=left;verticalAlign=top;fontColor=#9A3412;',15,24,280,20,qa)
 aws('client',220,45,44,'Tester',qa,fill='#7C3AED')
 
 # ---- CI/CD
@@ -94,22 +94,22 @@ ga=icon('githubactions',460,45,52,'<b>GitHub Actions</b><br>mvn verify · seguri
 sq=icon('sonarqubecloud',700,45,52,'<b>SonarQube Cloud</b><br>análisis estático',ci)
 
 # ---- Conexiones
-edge(spa,web,'HTTPS :8443 (TLS)<br>HTML/JS + REST JSON<br>Bearer JWT<br>(http :8081 → 301)',color='#2563EB')
+edge(spa,web,'HTTPS :8443 (TLS)<br>HTML/JS + REST JSON<br>Bearer JWT<br>(HTTP :8081 → HTTPS)',color='#2563EB')
 edge(web,app,'HTTP<br>app:8080',color='#16A34A')
 edge(app,schema,'JDBC<br>:5432',color='#4169E1')
 edge(schema,vol,'',color='#9CA3AF',dashed=1)
-edge(qa,app,'Solo dev: 127.0.0.1:8080 (y BD en 127.0.0.1:5433)',color='#EA580C',exit=('1','0.5'),pts=[(880,688)],entry=('0.5','1'))
+edge(qa,app,'Desarrollo: localhost:8080 · BD localhost:5433',color='#EA580C',exit=('1','0.5'),pts=[(880,688)],entry=('0.5','1'))
 edge(devp,gh,'git push',color='#4B5563')
 edge(gh,ga,'push a main',color='#4B5563')
-edge(ga,sq,'sonar scan',color='#4B5563')
+edge(ga,sq,'análisis Sonar',color='#4B5563')
 
 # Leyenda
 leg=box('<b>Leyenda</b>',1340,110,250,370,'#FFFFFF','#D1D5DB',font=12)
 yy=40
-for t,c,d in [('Navegador → Nginx','#2563EB',0),('Nginx → API (proxy)','#16A34A',0),('API → PostgreSQL','#4169E1',0),('QA → API (solo dev)','#EA580C',0),('CI/CD','#4B5563',0),('Persistencia de datos','#9CA3AF',1)]:
+for t,c,d in [('Navegador → Nginx','#2563EB',0),('Nginx → API (proxy)','#16A34A',0),('API → PostgreSQL','#4169E1',0),('QA → API (desarrollo)','#EA580C',0),('CI/CD','#4B5563',0),('Persistencia de datos','#9CA3AF',1)]:
     add('', 'endArrow=block;endFill=1;html=1;strokeWidth=2;strokeColor=%s;dashed=%d;shape=line;'%(c,d),15,yy+8,40,4,leg)
     add(t,'text;html=1;fontSize=11;align=left;verticalAlign=middle;',65,yy,175,20,leg); yy+=28
-add('<b>«device»</b> nodo físico/virtual<br><b>«container»</b> contenedor Docker<br><b>«artifact»</b> elemento desplegado<br><br>Puertos: host → contenedor<br>Publicados: solo 8081 y 8443<br>Variables obligatorias (.env):<br>JWT_SECRET, DB_PASSWORD,<br>DB_APP_PASSWORD',
+add('<b>«device»</b> nodo físico o virtual<br><b>«container»</b> contenedor Docker<br><b>«artifact»</b> elemento desplegado<br><br>Puertos: host → contenedor<br>Expuestos: 8081 y 8443<br>Variables requeridas (.env):<br>JWT_SECRET, DB_PASSWORD,<br>DB_APP_PASSWORD',
     'text;html=1;fontSize=11;align=left;verticalAlign=top;whiteSpace=wrap;',15,yy+5,225,160,leg)
 
 xml='<mxfile host="app.diagrams.net"><diagram id="despliegue" name="Despliegue Sprint 2"><mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="900" background="#FFFFFF" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>'+''.join(cells)+'</root></mxGraphModel></diagram></mxfile>'
