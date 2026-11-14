@@ -1,16 +1,20 @@
+name: reservahub
+
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:f377d590e5474681d4d7838635031a2b50647923b7abfa803ce9b5ff35d5c663
     container_name: reservahub-db
+    networks: [backend]
     environment:
       POSTGRES_DB: reservahub
       POSTGRES_USER: reservahub
-      POSTGRES_PASSWORD: reservahub
-    ports:
-      # Host 5433 avoids clashing with a local PostgreSQL on 5432
-      - "5433:5432"
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD en .env}
+      # Usuario de la API (solo DML); lo crea docker/db-init/01-app-user.sh al inicializar el volumen
+      DB_APP_USERNAME: reservahub_app
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD en .env}
     volumes:
       - reservahub_pgdata:/var/lib/postgresql/data
+      - ./docker/db-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U reservahub -d reservahub"]
       interval: 5s
@@ -20,18 +24,29 @@ services:
   app:
     build: .
     container_name: reservahub-app
+    networks: [backend]
     depends_on:
       db:
         condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://db:5432/reservahub
-      DB_USERNAME: reservahub
-      DB_PASSWORD: reservahub
-      JWT_SECRET: change-me-to-a-long-random-secret-at-least-256-bits-long!!
-      JWT_EXPIRATION_MS: "3600000"
+      # La API usa el usuario restringido; Flyway migra con el dueño de la BD
+      DB_USERNAME: reservahub_app
+      DB_PASSWORD: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD en .env}
+      DB_OWNER_USERNAME: reservahub
+      DB_OWNER_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD en .env}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET en .env (openssl rand -base64 48)}
+      JWT_EXPIRATION_MS: "${JWT_EXPIRATION_MS:-1800000}"
+      SWAGGER_ENABLED: "${SWAGGER_ENABLED:-false}"
       SERVER_PORT: "8080"
-    ports:
-      - "8080:8080"
+    # Sin `ports`: la API solo es alcanzable por la red interna de Compose (servicio `app`, puerto 8080)
+    expose:
+      - "8080"
+
+networks:
+  # Red con nombre fijo: el compose del front la declara `external` para llegar a http://app:8080
+  backend:
+    name: reservahub-backend
 
 volumes:
   reservahub_pgdata:

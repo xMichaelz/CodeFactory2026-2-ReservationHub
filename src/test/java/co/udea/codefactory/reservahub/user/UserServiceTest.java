@@ -1,5 +1,6 @@
 package co.udea.codefactory.reservahub.user;
 
+import co.udea.codefactory.reservahub.security.ratelimit.RequestClientIp;
 import co.udea.codefactory.reservahub.audit.AuditLogger;
 import co.udea.codefactory.reservahub.shared.enums.Role;
 import co.udea.codefactory.reservahub.shared.exception.ConflictException;
@@ -37,9 +38,12 @@ class UserServiceTest {
 
 	private UserService userService;
 
+	@Mock
+	private RequestClientIp clientIp;
+
 	@BeforeEach
 	void setUp() {
-		userService = new UserService(userRepository, passwordEncoder, new UserMapper(), auditLogger);
+		userService = new UserService(userRepository, passwordEncoder, new UserMapper(), auditLogger, clientIp);
 	}
 
 	@Test
@@ -68,7 +72,9 @@ class UserServiceTest {
 	void registerClientRejectsDuplicateEmail() {
 		when(userRepository.existsByEmailIgnoreCase("ana@example.com")).thenReturn(true);
 
-		assertThrows(ConflictException.class, () -> userService.registerClient(
-				new CreateUserRequestDTO("ana@example.com", "Secret123", "Ana", "Pérez", null)));
+		CreateUserRequestDTO request = new CreateUserRequestDTO("ana@example.com", "Secret123", "Ana", "Pérez", null);
+
+		ConflictException ex = assertThrows(ConflictException.class, () -> userService.registerClient(request));
+		assertEquals("No se pudo completar el registro con los datos enviados", ex.getMessage());
 	}
 }

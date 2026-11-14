@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -17,11 +16,10 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,19 +27,11 @@ import java.util.UUID;
 public class GlobalExceptionHandler {
 
 	private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+	private static final String VALIDATION_FAILED = "Request validation failed";
 
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
 		return ResponseEntity.status(ex.getHttpStatus())
-				.body(new ApiErrorResponse(ex.getErrorCode(), ex.getMessage(), traceId(request)));
-	}
-
-	@ExceptionHandler(AccountLockedException.class)
-	public ResponseEntity<ApiErrorResponse> handleAccountLocked(AccountLockedException ex,
-			HttpServletRequest request) {
-		long retryAfter = Math.max(1, Duration.between(Instant.now(), ex.getLockedUntil()).toSeconds());
-		return ResponseEntity.status(ex.getHttpStatus())
-				.header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter))
 				.body(new ApiErrorResponse(ex.getErrorCode(), ex.getMessage(), traceId(request)));
 	}
 
@@ -52,7 +42,7 @@ public class GlobalExceptionHandler {
 				.map(this::formatFieldError)
 				.toList();
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed", details,
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED, details,
 						traceId(request)));
 	}
 
@@ -63,7 +53,7 @@ public class GlobalExceptionHandler {
 				.map(v -> v.getPropertyPath() + ": " + v.getMessage())
 				.toList();
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed", details,
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED, details,
 						traceId(request)));
 	}
 
@@ -71,7 +61,7 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiErrorResponse> handleMissingParam(MissingServletRequestParameterException ex,
 			HttpServletRequest request) {
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed",
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED,
 						List.of(ex.getParameterName() + ": is required"), traceId(request)));
 	}
 
@@ -81,7 +71,7 @@ public class GlobalExceptionHandler {
 			HttpServletRequest request) {
 		String expected = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "valid value";
 		return ResponseEntity.badRequest()
-				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, "Request validation failed",
+				.body(new ApiErrorResponse(ErrorCodes.VALIDATION_ERROR, VALIDATION_FAILED,
 						List.of(ex.getName() + ": invalid value, expected " + expected), traceId(request)));
 	}
 
@@ -112,9 +102,18 @@ public class GlobalExceptionHandler {
 				.body(new ApiErrorResponse(ErrorCodes.FORBIDDEN, "Access denied", traceId(request)));
 	}
 
+	/** Ruta sin handler (p. ej. Swagger apagado, V-06): 404 y no un 500. */
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ApiErrorResponse(ErrorCodes.RESOURCE_NOT_FOUND, "Resource not found", traceId(request)));
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
-		log.error("Unhandled error [{}]", traceId(request), ex);
+		if (log.isErrorEnabled()) {
+			log.error("Unhandled error [{}]", traceId(request), ex);
+		}
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 				.body(new ApiErrorResponse(ErrorCodes.INTERNAL_ERROR, "Unexpected server error", traceId(request)));
 	}

@@ -1,0 +1,16 @@
+# V-05 · Registro duplicado: 409 con mensaje genérico, REGISTRATION_REJECTED y CLIENT_LOOKUP
+# Fecha: 2026-11-14 10:47 -05 · Stack: compose.yaml en el Mac, por https://localhost:8443 (Nginx -> API), límites activos
+
+$ POST /users (primera vez)
+{"id":"086432c2-2ea8-4180-a921-4b64c843c8d4","email":"cli-1794671220@example.com","firstName":"Ana","lastName":"Cliente","phone":"3001112233","role":"CLIENT","status":"ACTIVE","createdAt":"2026-11-14T15:47:00.891511216Z"}  -> HTTP 201
+$ POST /users (mismo email)
+{"errorCode":"CONFLICT","message":"No se pudo completar el registro con los datos enviados","details":[],"traceId":"eb2fa820-2da7-44fa-8db5-5861c8abe7d6"}  -> HTTP 409
+
+$ docker logs reservahub-app | grep REGISTRATION_REJECTED
+LOG {"@timestamp": "2026-11-14T15:47:00.905544841Z", "action": "REGISTRATION_REJECTED", "actor": "anonymous", "ip": "192.168.65.1", "outcome": "FAILURE", "traceId": "eb2fa820-2da7-44fa-8db5-5861c8abe7d6", "details": "role=CLIENT field=email"}
+
+$ GET /users/lookup?email=... (proveedor autenticado)
+{"id":"086432c2-2ea8-4180-a921-4b64c843c8d4","name":"Ana Cliente"}  -> HTTP 200
+LOG {"@timestamp": "2026-11-14T15:47:00.952868174Z", "action": "CLIENT_LOOKUP", "actor": "13573195-bc4c-40fd-8f73-7bc950a61348", "ip": "192.168.65.1", "outcome": "SUCCESS", "traceId": "46347c3a-20d2-4208-8313-536453d8e4af", "details": "found=true emailHash=11dcf431c3ee0c07a4a982268cabee530c494720ffec10faea49d1b78acf40ef"}
+
+Riesgo residual aceptado: el 409 sigue indicando que el correo existe (ADR-016).

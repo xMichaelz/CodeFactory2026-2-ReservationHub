@@ -1,7 +1,10 @@
 package co.udea.codefactory.reservahub.security.config;
 
+import co.udea.codefactory.reservahub.audit.AuditLogger;
 import co.udea.codefactory.reservahub.security.jwt.JwtAuthenticationFilter;
 import co.udea.codefactory.reservahub.security.jwt.JwtProperties;
+import co.udea.codefactory.reservahub.security.ratelimit.RateLimitFilter;
+import co.udea.codefactory.reservahub.security.ratelimit.RateLimitProperties;
 import co.udea.codefactory.reservahub.shared.dto.ApiErrorResponse;
 import co.udea.codefactory.reservahub.shared.exception.ErrorCodes;
 import tools.jackson.databind.json.JsonMapper;
@@ -21,7 +24,9 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -33,39 +38,56 @@ import java.util.UUID;
 
 @Configuration
 @EnableMethodSecurity
-@EnableConfigurationProperties({JwtProperties.class, LockoutProperties.class})
+@EnableConfigurationProperties({JwtProperties.class, LockoutProperties.class, RateLimitProperties.class})
 public class SecurityConfig {
 
+	private static final String CLIENT = "CLIENT";
+	private static final String PROVIDER = "PROVIDER";
+
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final RateLimitFilter rateLimitFilter;
 	private final JsonMapper jsonMapper = JsonMapper.shared();
 
-	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+	public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, RateLimitProperties rateLimitProperties,
+			AuditLogger auditLogger) {
 		this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+		this.rateLimitFilter = new RateLimitFilter(rateLimitProperties, auditLogger);
 	}
 
+	// HttpSecurity#build declara "throws Exception" (S112). CSRF se deshabilita a propósito (S4502): la API es
+	// stateless, se autentica con JWT en el header Authorization y no usa cookies, así que no aplica CSRF.
 	@Bean
+	@SuppressWarnings({"java:S112", "java:S4502"})
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http
 				.csrf(AbstractHttpConfigurer::disable)
 				.cors(Customizer.withDefaults())
+				.headers(headers -> headers
+						.contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
+						.referrerPolicy(ref -> ref.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+						.frameOptions(HeadersConfigurer.FrameOptionsConfig::deny)
+						.httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31_536_000))
+						.cacheControl(Customizer.withDefaults())
+						.contentTypeOptions(Customizer.withDefaults()))
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+						// Sin handler (springdoc apagado) estas rutas dan 404 también al anónimo, no 401 (V-06).
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/providers").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 						.requestMatchers("/api/v1/auth/logout").authenticated()
-						.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.GET, "/api/v1/catalog/services").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.GET, "/api/v1/users/lookup").hasRole("PROVIDER")
-						.requestMatchers("/api/v1/services/**").hasRole("PROVIDER")
-						.requestMatchers("/api/v1/schedules/**").hasRole("PROVIDER")
-						.requestMatchers("/api/v1/resources/**").hasRole("PROVIDER")
-						.requestMatchers(HttpMethod.GET, "/api/v1/reservations/mine").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.POST, "/api/v1/reservations").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/cancel").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/reschedule").hasAnyRole("CLIENT", "PROVIDER")
+						.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/catalog/services").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/users/lookup").hasRole(PROVIDER)
+						.requestMatchers("/api/v1/services/**").hasRole(PROVIDER)
+						.requestMatchers("/api/v1/schedules/**").hasRole(PROVIDER)
+						.requestMatchers("/api/v1/resources/**").hasRole(PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/reservations/mine").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.POST, "/api/v1/reservations").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/cancel").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/reschedule").hasAnyRole(CLIENT, PROVIDER)
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(ex -> ex
@@ -76,7 +98,9 @@ public class SecurityConfig {
 								writeError(response, HttpServletResponse.SC_FORBIDDEN, ErrorCodes.FORBIDDEN,
 										"Access denied"))
 				)
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+				// Límite de peticiones (V-03): tras el JWT (ya hay usuario) y antes de la autorización.
+				.addFilterAfter(rateLimitFilter, JwtAuthenticationFilter.class);
 
 		return http.build();
 	}
@@ -103,7 +127,9 @@ public class SecurityConfig {
 		return new BCryptPasswordEncoder();
 	}
 
+	// AuthenticationConfiguration#getAuthenticationManager declara "throws Exception" (S112).
 	@Bean
+	@SuppressWarnings("java:S112")
 	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
 		return configuration.getAuthenticationManager();
 	}

@@ -1,0 +1,13 @@
+# V-09 · CSP en la respuesta y sesión que caduca sola
+# Fecha: 2026-11-14 10:53 -05
+
+$ curl -ksI https://localhost:8443/ | grep -i content-security-policy
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'
+
+$ pnpm vitest run src/auth/session.test.ts (front)
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+
+Mitigación (sin cookie HttpOnly): el token vive en sessionStorage, caduca al vencer expiresAt (JWT de 30 min) y la CSP estricta (script-src 'self') reduce el riesgo de XSS. Riesgo residual: el token sigue en sessionStorage (decisión del plan H3: sin cookie HttpOnly).
+
+$ e2e con violaciones de CSP como fallo: e2e/fixtures.ts (ver sección e2e del README)

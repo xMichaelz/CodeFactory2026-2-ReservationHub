@@ -1,0 +1,12 @@
+# Solo desarrollo local: abre la API y la BD en 127.0.0.1 (Postman, DBeaver) y enciende Swagger.
+# Uso: docker compose -f compose.yaml -f compose.dev.yaml up --build
+services:
+  db:
+    ports:
+      # 5433 evita chocar con un PostgreSQL local en 5432
+      - "127.0.0.1:5433:5432"
+  app:
+    environment:
+      SWAGGER_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8080:8080"

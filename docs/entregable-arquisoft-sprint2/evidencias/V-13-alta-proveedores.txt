@@ -1,0 +1,21 @@
+# V-13 · Registro de proveedores: 3 por hora y por IP, evento PROVIDER_REGISTERED
+# Fecha: 2026-11-14 10:47 -05 · Stack: compose.yaml en el Mac, por https://localhost:8443 (Nginx -> API), límites activos
+
+$ POST /providers (intento 1 desde la misma IP)
+HTTP/2 201 
+$ POST /providers (intento 2 desde la misma IP)
+HTTP/2 201 
+$ POST /providers (intento 3 desde la misma IP)
+HTTP/2 201 
+$ POST /providers (intento 4 desde la misma IP)
+HTTP/2 429 
+retry-after: 3600
+{"errorCode":"RATE_LIMITED","message":"Too many requests, try again later","details":[],"traceId":"2d261a8e-25ee-4e0a-a5c5-80b6722500b4"}
+
+$ docker logs reservahub-app | grep PROVIDER_REGISTERED
+LOG {"@timestamp": "2026-11-14T15:47:00.468451465Z", "action": "PROVIDER_REGISTERED", "actor": "13573195-bc4c-40fd-8f73-7bc950a61348", "ip": "192.168.65.1", "outcome": "SUCCESS", "traceId": "196bd090-c253-4357-a14b-29cfd4516c3c", "details": "providerId=685fb7f0-0000-4019-987f-5fd2dceb002d"}
+LOG {"@timestamp": "2026-11-14T15:47:00.558498465Z", "action": "PROVIDER_REGISTERED", "actor": "33279c96-79b2-4f64-94af-957eca356f61", "ip": "192.168.65.1", "outcome": "SUCCESS", "traceId": "474dc8a0-5eab-4c84-a58a-728fe1749625", "details": "providerId=2c113960-9856-4555-937f-dc78338ca037"}
+LOG {"@timestamp": "2026-11-14T15:47:00.634834132Z", "action": "PROVIDER_REGISTERED", "actor": "0e7d7a81-30d2-4b3a-a6d4-f7ad1966f77d", "ip": "192.168.65.1", "outcome": "SUCCESS", "traceId": "dfe55f6f-dcdd-4dd7-a7b6-6b2701eacfed", "details": "providerId=15686bea-0073-4ebe-8c3c-6d64ff2107d6"}
+
+$ docker logs reservahub-app | grep RATE_LIMITED (el 4º intento)
+LOG {"@timestamp": "2026-11-14T15:47:00.655270924Z", "action": "RATE_LIMITED", "actor": "anonymous", "ip": "192.168.65.1", "outcome": "FAILURE", "traceId": "8dbc9645-7ef4-4a18-bb41-6f6ed576ef5c", "details": "rule=provider-registration method=POST path=/api/v1/providers"}

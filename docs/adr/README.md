@@ -17,3 +17,4 @@
 | [ADR-013](ADR-013.md) | Estrategia de observabilidad | Aceptado |
 | [ADR-014](ADR-014.md) | Docker y Docker Compose | Aceptado |
 | [ADR-015](ADR-015.md) | Concurrencia al crear reservas (bloqueo pesimista por proveedor) | Aceptado |
+| [ADR-016](ADR-016.md) | Registro sin enumeración completa (riesgo residual de V-05) | Aceptado |

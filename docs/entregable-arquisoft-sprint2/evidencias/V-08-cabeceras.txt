@@ -1,0 +1,28 @@
+# V-08 · Cabeceras de seguridad (SPA y API)
+# Fecha: 2026-11-14 10:46 -05 · Stack: docker compose (compose.yaml, sin compose.dev) en el Mac
+
+$ curl -ksI https://localhost:8443/  (SPA, Nginx)
+HTTP/2 200 
+server: nginx
+strict-transport-security: max-age=31536000; includeSubDomains
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: no-referrer
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'
+
+$ curl -ksI https://localhost:8443/api/v1/auth/login  (API vía Nginx)
+HTTP/2 401 
+server: nginx
+cache-control: no-cache, no-store, max-age=0, must-revalidate
+pragma: no-cache
+strict-transport-security: max-age=31536000; includeSubDomains
+x-content-type-options: nosniff
+x-frame-options: DENY
+referrer-policy: no-referrer
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+content-security-policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'
+
+$ curl -ksI https://localhost:8443/ruta-que-no-existe
+HTTP/2 200 
+server: nginx
