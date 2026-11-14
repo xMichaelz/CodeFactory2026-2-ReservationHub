@@ -1,0 +1,24 @@
+﻿#,Método,Endpoint,Módulo,HU,Rol,Descripción,Valor negocio (35%),Criticidad (25%),Riesgo seguridad (20%),Dependencias (20%),Puntaje,Prioridad,MoSCoW,Justificación
+1,POST,/api/v1/auth/login,security,HU-03,Público,Iniciar sesión y obtener JWT,5,5,5,5,5.0,P1 Crítica,Must,Puerta de entrada: sin login ningún otro endpoint protegido funciona; blanco principal de fuerza bruta.
+2,POST,/api/v1/reservations,reservation,"HU-12, HU-13","CLIENT, PROVIDER",Crear reserva (cliente o proveedor en nombre de un cliente),5,5,4,4,4.6,P1 Crítica,Must,"Es el flujo central del negocio; debe garantizar que no haya dobles reservas (bloqueo SELECT … FOR UPDATE, ADR-015)."
+3,GET,/api/v1/services/{serviceId}/availability,reservation,HU-11,"CLIENT, PROVIDER",Franjas libres de un servicio (máx. 31 días),5,4,3,5,4.35,P1 Crítica,Must,Paso previo obligatorio a reservar y reprogramar; consulta costosa (calcula horarios − bloqueos − reservas).
+4,POST,/api/v1/users,user,HU-01,Público,Registrar cliente,4,4,4,5,4.2,P1 Crítica,Must,Sin clientes no hay reservas; endpoint público expuesto a registros masivos y enumeración.
+5,POST,/api/v1/providers,provider,HU-02,Público,Registrar proveedor,4,4,4,5,4.2,P1 Crítica,Must,Sin proveedores no hay oferta; habilita todo el módulo de catálogo.
+6,POST,/api/v1/services,servicecatalog,HU-05,PROVIDER,Crear servicio,4,4,3,5,4.0,P1 Crítica,Must,Sin servicios no hay catálogo ni disponibilidad.
+7,POST,/api/v1/schedules,schedule,HU-08,PROVIDER,Definir horario de atención,4,4,3,5,4.0,P1 Crítica,Must,La disponibilidad se calcula a partir de los horarios.
+8,GET,/api/v1/catalog/services,servicecatalog,Frontend F1,"CLIENT, PROVIDER",Catálogo de servicios activos,5,4,2,4,3.95,P2 Alta,Should,Primera pantalla del cliente; alto tráfico de lectura.
+9,PATCH,/api/v1/reservations/{id}/cancel,reservation,"HU-14, HU-15","CLIENT, PROVIDER",Cancelar reserva (motivo obligatorio si cancela el proveedor),4,4,4,2,3.6,P2 Alta,Should,Libera franjas; riesgo de BOLA si no se valida el dueño (hoy sí se valida: requireOwner).
+10,PATCH,/api/v1/reservations/{id}/reschedule,reservation,HU-16,"CLIENT, PROVIDER",Reprogramar reserva,4,4,4,1,3.4,P2 Alta,Should,Combina cancelar + reservar; misma concurrencia que crear.
+11,GET,/api/v1/reservations/mine,reservation,Frontend F1/F2,"CLIENT, PROVIDER",Mis reservas (filtros),4,3,4,2,3.35,P2 Alta,Should,Expone datos personales de reservas; debe filtrar estrictamente por el usuario autenticado.
+12,POST,/api/v1/auth/logout,security,HU-04,Autenticado,Cerrar sesión (revoca el JTI),3,3,5,1,3.0,P2 Alta,Should,Control de seguridad: invalida el token antes de expirar.
+13,GET,/api/v1/users/lookup,user,HU-13,PROVIDER,Buscar cliente por email,3,3,5,1,3.0,P2 Alta,Should,Permite al proveedor reservar por un cliente; riesgo de enumeración de emails.
+14,POST,/api/v1/schedules/{id}/blocks,schedule,HU-09,PROVIDER,"Bloquear franja (vacaciones, ausencias)",3,4,2,2,2.85,P3 Media,Could,Afecta directamente la disponibilidad ofrecida.
+15,PATCH,/api/v1/services/{id}/deactivate,servicecatalog,HU-07,PROVIDER,Desactivar servicio,3,3,3,2,2.8,P3 Media,Could,Retira el servicio del catálogo; verifica dueño.
+16,POST,/api/v1/resources,resource,HU-10,PROVIDER,"Registrar recurso (sala, equipo, persona)",3,3,2,3,2.8,P3 Media,Could,Requisito para asociar recursos a servicios.
+17,PUT,/api/v1/services/{id},servicecatalog,HU-06,PROVIDER,Editar servicio,3,3,3,1,2.6,P3 Media,Could,Mantenimiento del catálogo.
+18,POST,/api/v1/services/{id}/resources,servicecatalog,Sprint 2,PROVIDER,Asociar recursos a un servicio,3,3,2,2,2.6,P3 Media,Could,Valida que el recurso sea del mismo proveedor.
+19,GET,/api/v1/services/mine,servicecatalog,Frontend F2,PROVIDER,Mis servicios,3,2,2,2,2.35,P4 Baja,Won't (ahora),Lectura del panel del proveedor.
+20,GET,/api/v1/schedules/mine,schedule,Frontend F2,PROVIDER,Mis horarios,3,2,2,2,2.35,P4 Baja,Won't (ahora),Lectura del panel del proveedor.
+21,GET,/actuator/health,observability,Operación,Público,Salud del servicio,2,4,1,1,2.1,P4 Baja,Won't (ahora),Necesario para monitoreo y healthchecks; no expone detalles.
+22,GET,/api/v1/resources/mine,resource,Frontend F2,PROVIDER,Mis recursos,2,2,2,2,2.0,P4 Baja,Won't (ahora),Lectura del panel del proveedor.
+23,GET,"/swagger-ui.html, /v3/api-docs",OpenAPI,Operación,Público,Documentación interactiva,2,1,4,1,1.95,P4 Baja,Won't (ahora),Útil en desarrollo; en producción expone el inventario completo de la API.
