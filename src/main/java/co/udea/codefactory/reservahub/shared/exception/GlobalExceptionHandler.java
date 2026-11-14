@@ -17,6 +17,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -110,6 +111,13 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(new ApiErrorResponse(ErrorCodes.FORBIDDEN, "Access denied", traceId(request)));
+	}
+
+	/** Ruta sin handler (p. ej. Swagger apagado, V-06): 404 y no un 500. */
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ApiErrorResponse> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(new ApiErrorResponse(ErrorCodes.RESOURCE_NOT_FOUND, "Resource not found", traceId(request)));
 	}
 
 	@ExceptionHandler(Exception.class)

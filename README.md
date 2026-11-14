@@ -30,16 +30,21 @@ Dependencias extra justificadas: **JJWT** (tokens), **springdoc-openapi** (docum
 
 ```bash
 cp .env.example .env
+# Rellene DB_PASSWORD y JWT_SECRET (sin ellos la API y el compose no arrancan):
+openssl rand -base64 48   # úsalo como JWT_SECRET
 ```
+
+`.env` está en `.gitignore`: nunca se commitea.
 
 Variables:
 
 | Variable | Descripción |
 |----------|-------------|
 | `DB_URL` | JDBC URL |
-| `DB_USERNAME` / `DB_PASSWORD` | Credenciales DB |
-| `JWT_SECRET` | Secreto HS256 (≥ 32 bytes) |
-| `JWT_EXPIRATION_MS` | Expiración del token |
+| `DB_USERNAME` / `DB_PASSWORD` | Credenciales DB (obligatorias, sin valor por defecto) |
+| `JWT_SECRET` | Secreto HS256, obligatorio, ≥ 32 bytes (la API no arranca sin él) |
+| `JWT_EXPIRATION_MS` | Expiración del token (default 1800000 = 30 min) |
+| `SWAGGER_ENABLED` | `true` publica Swagger/OpenAPI (solo desarrollo); por defecto `false` y las rutas dan 404 |
 | `SERVER_PORT` | Puerto HTTP (default 8080) |
 
 ## Ejecución local
@@ -50,15 +55,16 @@ Variables:
 docker compose up -d db
 ```
 
-PostgreSQL queda en `localhost:5433` (usuario/clave/db: `reservahub`).
+PostgreSQL queda en `localhost:5433` (usuario/db: `reservahub`; la clave es la de `DB_PASSWORD` en `.env`).
 
-Exportar variables (o usar un `.env` cargado por tu shell):
+Exportar variables (o cargar el `.env` en tu shell: `set -a; source .env; set +a`):
 
 ```bash
 export DB_URL=jdbc:postgresql://localhost:5433/reservahub
 export DB_USERNAME=reservahub
-export DB_PASSWORD=reservahub
-export JWT_SECRET='change-me-to-a-long-random-secret-at-least-256-bits-long!!'
+export DB_PASSWORD='<la de tu .env>'
+export JWT_SECRET="$(openssl rand -base64 48)"
+export SWAGGER_ENABLED=true   # opcional: Swagger/Postman local
 ```
 
 ### 2) Arrancar la API
@@ -83,6 +89,8 @@ docker compose up --build
 ```
 
 ## Documentación interactiva
+
+Solo con `SWAGGER_ENABLED=true`; si no, `/v3/api-docs` y `/swagger-ui*` responden 404.
 
 - Swagger UI: http://localhost:8080/swagger-ui.html
 - OpenAPI JSON: http://localhost:8080/v3/api-docs

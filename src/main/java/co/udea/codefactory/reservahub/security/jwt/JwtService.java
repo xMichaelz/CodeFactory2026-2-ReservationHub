@@ -21,7 +21,12 @@ public class JwtService {
 
 	public JwtService(JwtProperties properties) {
 		this.properties = properties;
-		byte[] keyBytes = properties.getSecret().getBytes(StandardCharsets.UTF_8);
+		String secret = properties.getSecret();
+		if (secret == null || secret.isBlank()) {
+			throw new IllegalStateException(
+					"JWT_SECRET no está definido: genere uno con `openssl rand -base64 48` y expórtelo (ver .env.example)");
+		}
+		byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
 		if (keyBytes.length < 32) {
 			throw new IllegalStateException("JWT_SECRET must be at least 32 bytes");
 		}

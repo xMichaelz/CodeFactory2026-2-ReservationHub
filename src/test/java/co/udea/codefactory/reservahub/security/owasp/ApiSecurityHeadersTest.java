@@ -1,7 +1,6 @@
 package co.udea.codefactory.reservahub.security.owasp;
 
 import co.udea.codefactory.reservahub.AbstractIntegrationTest;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -64,13 +63,11 @@ class ApiSecurityHeadersTest extends AbstractIntegrationTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-08 · O3")
 	void referrerPolicyNoReferrer() throws Exception {
 		assertHeader("Referrer-Policy", "no-referrer"::equals, "no-referrer", false);
 	}
 
 	@Test
-	@Disabled("pendiente V-08 · O3")
 	void contentSecurityPolicyDenyAll() throws Exception {
 		String csp = "default-src 'none'; frame-ancestors 'none'";
 		assertHeader("Content-Security-Policy", csp::equals, csp, false);
