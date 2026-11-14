@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -64,16 +65,20 @@ public class AuditLogger {
 	}
 
 	public void event(String action, String actor, String ip, String outcome, String details) {
-		log.atInfo()
+		var builder = log.atInfo()
 				.setMessage("audit {}")
 				.addArgument(action)
 				.addKeyValue("action", action)
 				.addKeyValue("actor", actor == null || actor.isBlank() ? "anonymous" : actor)
 				.addKeyValue("ip", ip == null || ip.isBlank() ? clientIp.current() : ip)
-				.addKeyValue("outcome", outcome)
-				.addKeyValue("traceId", traceId())
-				.addKeyValue("details", redact(details))
-				.log();
+				.addKeyValue("outcome", outcome);
+		// Si TraceIdFilter ya dejó traceId en el MDC, el formateador logstash lo escribe solo; repetirlo como
+		// par clave-valor provoca "The name 'traceId' has already been written" y se pierde la línea.
+		String traceId = traceId();
+		if (MDC.get("traceId") == null) {
+			builder = builder.addKeyValue("traceId", traceId);
+		}
+		builder.addKeyValue("details", redact(details)).log();
 		count(action);
 	}
 
