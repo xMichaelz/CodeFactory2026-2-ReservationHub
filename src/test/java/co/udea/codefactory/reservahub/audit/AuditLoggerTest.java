@@ -64,6 +64,24 @@ class AuditLoggerTest extends AbstractIntegrationTest {
 	}
 
 	@Test
+	void auditEventWithTraceIdInMdcIsValidJsonWithSingleTraceId(CapturedOutput output) {
+		org.slf4j.MDC.put("traceId", "trace-mdc-1234");
+		try {
+			auditLogger.event("MDC_EVENT", "user-2", "203.0.113.6", "SUCCESS", "k=v");
+		} finally {
+			org.slf4j.MDC.remove("traceId");
+		}
+
+		assertFalse(output.getAll().contains("has already been written"), "el formateador JSON no debe fallar");
+		String raw = java.util.Arrays.stream(output.getAll().split("\\R")).map(String::trim)
+				.filter(l -> l.startsWith("{") && l.contains("MDC_EVENT")).findFirst()
+				.orElseThrow(() -> new AssertionError("no hay línea JSON para MDC_EVENT"));
+		JsonNode line = JSON.readTree(raw);
+		assertEquals("trace-mdc-1234", line.path("traceId").asText());
+		assertEquals(1, raw.split("\"traceId\"", -1).length - 1, "traceId debe aparecer una sola vez");
+	}
+
+	@Test
 	void failedLoginIncrementsCounterAndLogsJson(CapturedOutput output) throws Exception {
 		double before = counter("reservahub.auth.login.failed");
 
