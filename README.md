@@ -1,6 +1,14 @@
 # ReservaHub
 
-Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 1).
+[![CI](https://github.com/xMichaelz/CodeFactory2026-2-ReservationHub/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/xMichaelz/CodeFactory2026-2-ReservationHub/actions/workflows/sonarcloud.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=alert_status)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=coverage)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=bugs)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=vulnerabilities)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=security_rating)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
+
+Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 2).
 
 Arquitectura: **monolito modular** (una sola aplicación Spring Boot), organizada por dominios de negocio con capas `controller / DTO / entity / mapper / repository / service`.
 
@@ -47,7 +55,10 @@ Variables:
 | `JWT_SECRET` | Secreto HS256, obligatorio, ≥ 32 bytes (la API no arranca sin él) |
 | `JWT_EXPIRATION_MS` | Expiración del token (default 1800000 = 30 min) |
 | `SWAGGER_ENABLED` | `true` publica Swagger/OpenAPI (solo desarrollo); por defecto `false` y las rutas dan 404 |
-| `SERVER_PORT` | Puerto HTTP (default 8080) |
+| `DB_HOST` / `DB_PORT` / `DB_NAME` | Alternativa a `DB_URL` (la usa Render) |
+| `DB_POOL_MAX` | Tamaño máximo del pool de conexiones (default 10) |
+| `SERVER_PORT` | Puerto HTTP local (default 8080). En Render manda `PORT` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del frontend, separados por coma |
 
 ## Ejecución local
 
@@ -92,6 +103,23 @@ Servicios: `db` (PostgreSQL 16, imagen fijada por digest) y `app` (API, corre co
 
 Seguridad de la cadena: `.github/dependabot.yml` (Maven, Docker y Actions, semanal) y `.github/workflows/seguridad.yml` (OSV-Scanner y Trivy, fallan con HIGH/CRITICAL).
 
+## Despliegue en Render
+
+`render.yaml` crea la API (Docker, Java 25) y PostgreSQL 16 en la región `oregon`. Flyway aplica las migraciones al arrancar, igual que en local. Render genera `JWT_SECRET` y conecta la base por la red privada.
+
+1. El blueprint tiene que estar en `main`.
+2. Abre [este enlace de Blueprint](https://render.com/deploy?repo=https://github.com/xMichaelz/CodeFactory2026-2-ReservationHub) e inicia sesión en Render.
+3. Confirma el plan gratuito. Render crea `reservahub-api` y `reservahub-db`.
+
+Cuando termine el deploy:
+
+- Health: `https://<servicio>.onrender.com/actuator/health`
+- Swagger y OpenAPI están apagados por defecto (V-06); para verlos, `SWAGGER_ENABLED=true` en el dashboard.
+
+Si el frontend no corre en `http://localhost:5173`, cambia `CORS_ALLOWED_ORIGINS` en el dashboard (orígenes separados por coma) y vuelve a desplegar.
+
+En el plan gratuito la API se suspende tras un rato sin tráfico: el primer request después de eso tarda más. La base gratuita de Render caduca a los 30 días.
+
 ## Tests
 
 ```bash
@@ -107,7 +135,7 @@ Solo con `SWAGGER_ENABLED=true`; si no, `/v3/api-docs` y `/swagger-ui*` responde
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 - Health: http://localhost:8080/actuator/health
 
-## Endpoints principales (HU-01 .. HU-10)
+## Endpoints principales (HU-01 .. HU-16)
 
 | Método | Ruta | HU |
 |--------|------|----|
@@ -121,8 +149,16 @@ Solo con `SWAGGER_ENABLED=true`; si no, `/v3/api-docs` y `/swagger-ui*` responde
 | POST | `/api/v1/schedules` | HU-08 |
 | POST | `/api/v1/schedules/{id}/blocks` | HU-09 |
 | POST | `/api/v1/resources` | HU-10 |
+| GET | `/api/v1/services/{id}/availability` | HU-11 |
+| POST | `/api/v1/reservations` | HU-12, HU-13 |
+| PATCH | `/api/v1/reservations/{id}/cancel` | HU-14, HU-15 |
+| PATCH | `/api/v1/reservations/{id}/reschedule` | HU-16 |
 
-Colección Postman: `postman/ReservaHub-Sprint1.postman_collection.json`
+HU-12 es la reserva del cliente para sí mismo. HU-13 es el mismo `POST`: el proveedor envía el `clientId`. En la cancelación, el proveedor debe indicar motivo (HU-15).
+
+Priorización, roles y política de `/api/v1`: `docs/api/apis-priorizadas.md`.
+
+Colecciones Postman: `postman/ReservaHub-Sprint1.postman_collection.json` y `postman/ReservaHub-Sprint2.postman_collection.json`.
 
 ## Estructura del proyecto
 
@@ -130,7 +166,8 @@ Colección Postman: `postman/ReservaHub-Sprint1.postman_collection.json`
 reservahub/
 ├── src/main/java/co/udea/codefactory/reservahub/
 │   ├── user/ provider/ servicecatalog/ schedule/ resource/
-│   ├── reservation/ report/          # placeholders Sprint futuro
+│   ├── reservation/                  # Sprint 2
+│   ├── report/                       # placeholder Sprint futuro
 │   ├── security/ audit/ observability/ shared/
 ├── src/main/resources/db/migration/
 ├── docs/adr/ docs/architecture/ docs/api/

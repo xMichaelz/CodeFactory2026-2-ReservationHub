@@ -41,6 +41,9 @@ import java.util.UUID;
 @EnableConfigurationProperties({JwtProperties.class, LockoutProperties.class, RateLimitProperties.class})
 public class SecurityConfig {
 
+	private static final String CLIENT = "CLIENT";
+	private static final String PROVIDER = "PROVIDER";
+
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
 	private final RateLimitFilter rateLimitFilter;
 	private final JsonMapper jsonMapper = JsonMapper.shared();
@@ -51,7 +54,10 @@ public class SecurityConfig {
 		this.rateLimitFilter = new RateLimitFilter(rateLimitProperties, auditLogger);
 	}
 
+	// HttpSecurity#build declara "throws Exception" (S112). CSRF se deshabilita a propósito (S4502): la API es
+	// stateless, se autentica con JWT en el header Authorization y no usa cookies, así que no aplica CSRF.
 	@Bean
+	@SuppressWarnings({"java:S112", "java:S4502"})
 	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http
 				.csrf(AbstractHttpConfigurer::disable)
@@ -72,16 +78,16 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/providers").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 						.requestMatchers("/api/v1/auth/logout").authenticated()
-						.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.GET, "/api/v1/catalog/services").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.GET, "/api/v1/users/lookup").hasRole("PROVIDER")
-						.requestMatchers("/api/v1/services/**").hasRole("PROVIDER")
-						.requestMatchers("/api/v1/schedules/**").hasRole("PROVIDER")
-						.requestMatchers("/api/v1/resources/**").hasRole("PROVIDER")
-						.requestMatchers(HttpMethod.GET, "/api/v1/reservations/mine").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.POST, "/api/v1/reservations").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/cancel").hasAnyRole("CLIENT", "PROVIDER")
-						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/reschedule").hasAnyRole("CLIENT", "PROVIDER")
+						.requestMatchers(HttpMethod.GET, "/api/v1/services/*/availability").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/catalog/services").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/users/lookup").hasRole(PROVIDER)
+						.requestMatchers("/api/v1/services/**").hasRole(PROVIDER)
+						.requestMatchers("/api/v1/schedules/**").hasRole(PROVIDER)
+						.requestMatchers("/api/v1/resources/**").hasRole(PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/reservations/mine").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.POST, "/api/v1/reservations").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/cancel").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/reschedule").hasAnyRole(CLIENT, PROVIDER)
 						.anyRequest().authenticated()
 				)
 				.exceptionHandling(ex -> ex
@@ -121,7 +127,9 @@ public class SecurityConfig {
 		return new BCryptPasswordEncoder();
 	}
 
+	// AuthenticationConfiguration#getAuthenticationManager declara "throws Exception" (S112).
 	@Bean
+	@SuppressWarnings("java:S112")
 	AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
 		return configuration.getAuthenticationManager();
 	}

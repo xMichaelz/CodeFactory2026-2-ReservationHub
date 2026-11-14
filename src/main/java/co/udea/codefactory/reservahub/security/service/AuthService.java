@@ -26,6 +26,8 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
+	private static final String USER_ID = "userId=";
+
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
@@ -90,7 +92,7 @@ public class AuthService {
 
 		failures.invalidate(key);
 		String token = jwtService.generateToken(user);
-		auditLogger.info("LOGIN_SUCCESS", "userId=" + user.getId() + " ip=" + ip);
+		auditLogger.info("LOGIN_SUCCESS", USER_ID + user.getId() + " ip=" + ip);
 		return new LoginResponseDTO(
 				token,
 				"Bearer",
@@ -107,7 +109,7 @@ public class AuthService {
 		int count = stale ? 1 : previous.count() + 1;
 		Instant lockedUntil = count >= lockout.getMaxAttempts() ? now.plus(window) : null;
 		failures.put(key, new Attempts(count, now, lockedUntil));
-		String who = user != null ? "userId=" + user.getId() : "userId=none";
+		String who = user != null ? USER_ID + user.getId() : USER_ID + "none";
 		if (lockedUntil != null) {
 			auditLogger.info("LOGIN_LOCKED", who + " ip=" + ip + " until=" + lockedUntil);
 		} else {

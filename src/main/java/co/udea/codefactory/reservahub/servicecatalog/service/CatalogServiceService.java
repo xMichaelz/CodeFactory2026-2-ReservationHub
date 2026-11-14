@@ -38,6 +38,8 @@ import java.util.UUID;
 @Service
 public class CatalogServiceService {
 
+	private static final String SERVICE_ID = "serviceId=";
+
 	private final CatalogServiceRepository catalogServiceRepository;
 	private final ProviderService providerService;
 	private final CatalogServiceMapper mapper;
@@ -75,7 +77,7 @@ public class CatalogServiceService {
 		service.setStatus(EntityStatus.ACTIVE);
 
 		CatalogService saved = catalogServiceRepository.save(service);
-		auditLogger.info("SERVICE_CREATED", "serviceId=" + saved.getId() + " providerId=" + provider.getId());
+		auditLogger.info("SERVICE_CREATED", SERVICE_ID + saved.getId() + " providerId=" + provider.getId());
 		return mapper.toResponse(saved);
 	}
 
@@ -94,7 +96,7 @@ public class CatalogServiceService {
 		service.setPrice(request.price());
 
 		CatalogService saved = catalogServiceRepository.save(service);
-		auditLogger.info("SERVICE_UPDATED", "serviceId=" + saved.getId());
+		auditLogger.info("SERVICE_UPDATED", SERVICE_ID + saved.getId());
 		return mapper.toResponse(saved);
 	}
 
@@ -107,7 +109,7 @@ public class CatalogServiceService {
 		}
 		service.setStatus(EntityStatus.INACTIVE);
 		CatalogService saved = catalogServiceRepository.save(service);
-		auditLogger.info("SERVICE_DEACTIVATED", "serviceId=" + saved.getId());
+		auditLogger.info("SERVICE_DEACTIVATED", SERVICE_ID + saved.getId());
 		return mapper.toResponse(saved);
 	}
 
@@ -132,7 +134,7 @@ public class CatalogServiceService {
 			throw new ConflictException("Resource already associated with this service");
 		}
 		ids.forEach(id -> serviceResourceRepository.save(new ServiceResource(serviceId, id)));
-		auditLogger.info("SERVICE_RESOURCES_LINKED", "serviceId=" + serviceId + " resources=" + ids.size());
+		auditLogger.info("SERVICE_RESOURCES_LINKED", SERVICE_ID + serviceId + " resources=" + ids.size());
 	}
 
 	@Transactional(readOnly = true)

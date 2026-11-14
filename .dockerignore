@@ -1,0 +1,13 @@
+.git
+.github
+.idea
+.vscode
+target
+docs
+documentacion
+postman
+*.md
+.env
+.env.*
+*.log
+logs

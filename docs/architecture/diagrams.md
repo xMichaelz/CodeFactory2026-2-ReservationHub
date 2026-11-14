@@ -1,6 +1,6 @@
 # Diagramas de arquitectura (C4 ligero / UML textual)
 
-Los diagramas reflejan **solo** componentes implementados en Sprint 1.
+Los diagramas reflejan los componentes implementados hasta el Sprint 2, reservas incluidas. El módulo `report` sigue como placeholder.
 
 ## Diagrama de contexto
 
@@ -10,9 +10,9 @@ title ReservaHub — Contexto
 Person(client, "Cliente", "Usuario final")
 Person(provider, "Proveedor", "Dueño del negocio")
 System(reservahub, "ReservaHub", "API REST monolito modular")
-SystemDb(pg, "PostgreSQL", "Datos de usuarios, proveedores, servicios, agendas, recursos")
-Rel(client, reservahub, "Registro / login")
-Rel(provider, reservahub, "Registro, servicios, horarios, recursos")
+SystemDb(pg, "PostgreSQL", "Usuarios, proveedores, servicios, agendas, recursos y reservas")
+Rel(client, reservahub, "Registro, login y reservas")
+Rel(provider, reservahub, "Oferta, agenda y reservas a nombre de un cliente")
 Rel(reservahub, pg, "JDBC / JPA")
 ```
 
@@ -64,12 +64,16 @@ sequenceDiagram
 
 ## Diagrama de despliegue
 
+Producción del Sprint 2. El servicio ya está en Render. GitHub Actions (`.github/workflows/sonarcloud.yml`) compila, corre las pruebas con JaCoCo y publica el análisis en SonarCloud. El diagrama incluye también los pull requests hacia `develop` y `main`: ese disparador entra con el cambio de CI.
+
 ```mermaid
 flowchart TB
-  subgraph host [Máquina local / Docker Compose]
-    APP[reservahub-app :8080]
-    DB[reservahub-db :5432 interno / :5433 host]
-  end
-  DEV[Desarrollador] --> APP
-  APP --> DB
+  DEV[Desarrollador] --> GH[GitHub<br/>CodeFactory2026-2-ReservationHub]
+  GH -->|push a main y pull request| GHA[GitHub Actions<br/>verify con JaCoCo]
+  GHA --> SONAR[SonarCloud<br/>arge2004_reservationhubanalysis]
+  GH -->|deploy de main| API[Render Web Service<br/>reservahub-api<br/>Docker, Java 25]
+  API --> PG[(Render PostgreSQL 16<br/>reservahub-db)]
+  USER[Cliente o proveedor] -->|HTTPS| API
 ```
+
+En local, `docker compose` sigue levantando la API y PostgreSQL 16 en la máquina del desarrollador. Ese camino no reemplaza el diagrama de arriba.
