@@ -3,7 +3,6 @@ package co.udea.codefactory.reservahub.security.owasp;
 import co.udea.codefactory.reservahub.AbstractIntegrationTest;
 import co.udea.codefactory.reservahub.security.jwt.JwtService;
 import co.udea.codefactory.reservahub.shared.enums.Role;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,6 +25,8 @@ import static co.udea.codefactory.reservahub.security.owasp.OwaspTestSupport.dis
 import static co.udea.codefactory.reservahub.security.owasp.OwaspTestSupport.mvc;
 import static co.udea.codefactory.reservahub.security.owasp.OwaspTestSupport.remoteAddr;
 import static co.udea.codefactory.reservahub.security.owasp.OwaspTestSupport.request;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 
@@ -54,12 +55,16 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 		"app.rate-limit.registration-per-hour=2",
 		"app.rate-limit.provider-registration-per-hour=2",
 		"app.rate-limit.authenticated-per-minute=2",
-		"app.rate-limit.lookup-per-minute=2"
+		"app.rate-limit.lookup-per-minute=2",
+		// Las propiedades en línea pasan por Properties.load, por eso la barra del regex va doble.
+		"app.rate-limit.trusted-proxies=172\\\\.(1[6-9]|2[0-9]|3[0-1])\\\\.\\\\d{1,3}\\\\.\\\\d{1,3}"
 })
 class RateLimitCoverageTest extends AbstractIntegrationTest {
 
 	private static final int LIMIT = 2;
 	private static final Set<String> EXEMPT = Set.of("GET /actuator/health");
+	private static final String LOGIN = "POST /api/v1/auth/login";
+	private static final String CATALOG = "GET /api/v1/catalog/services";
 	private static final Pattern RATE_LIMITED = Pattern.compile("\"errorCode\"\\s*:\\s*\"RATE_LIMITED\"");
 
 	/** Endpoints autenticados costosos → rol con el que se llaman. */
@@ -113,7 +118,6 @@ class RateLimitCoverageTest extends AbstractIntegrationTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-03 · O4")
 	void everyPublicEndpointAnswers429AfterTheLimit() throws Exception {
 		MockMvc mvc = mvc(context);
 		List<String> failures = new ArrayList<>();
@@ -133,7 +137,6 @@ class RateLimitCoverageTest extends AbstractIntegrationTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-03 · O4")
 	void everyCostlyEndpointAnswers429AfterTheLimit() throws Exception {
 		MockMvc mvc = mvc(context);
 		List<String> failures = new ArrayList<>();
@@ -159,5 +162,52 @@ class RateLimitCoverageTest extends AbstractIntegrationTest {
 			}
 		}
 		assertTrue(failures.isEmpty(), "Costosos sin límite de tasa: " + failures);
+	}
+
+	private static int[] statuses(MockMvc mvc, int times, java.util.function.Supplier<
+			org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder> builder) throws Exception {
+		int[] result = new int[times];
+		for (int i = 0; i < times; i++) {
+			result[i] = mvc.perform(builder.get()).andReturn().getResponse().getStatus();
+		}
+		return result;
+	}
+
+	@Test
+	void twoClientsBehindTheTrustedProxyHaveSeparateBuckets() throws Exception {
+		MockMvc mvc = mvc(context);
+		String proxy = "172.18.0.5";
+		int[] first = statuses(mvc, LIMIT + 1, () -> request(LOGIN).with(remoteAddr(proxy))
+				.header("X-Forwarded-For", "198.51.100.1"));
+		int[] second = statuses(mvc, 1, () -> request(LOGIN).with(remoteAddr(proxy))
+				.header("X-Forwarded-For", "198.51.100.2"));
+		assertEquals(429, first[LIMIT], "El tercer intento del primer cliente debe dar 429");
+		assertNotEquals(429, second[0], "El segundo cliente tras el mismo proxy tiene su propio cupo");
+	}
+
+	@Test
+	void forgedForwardedForFromAnUntrustedAddressDoesNotEvadeTheLimit() throws Exception {
+		MockMvc mvc = mvc(context);
+		String attacker = "203.0.113.7";
+		MockHttpServletResponse last = null;
+		for (int i = 0; i <= LIMIT; i++) {
+			last = mvc.perform(request(LOGIN).with(remoteAddr(attacker))
+					.header("X-Forwarded-For", "198.51.100." + (50 + i))).andReturn().getResponse();
+		}
+		assertEquals(429, last.getStatus(), "Un X-Forwarded-For falso desde una IP no confiable no cambia el cupo");
+	}
+
+	@Test
+	void twoUsersFromTheSameAddressHaveSeparateBuckets() throws Exception {
+		MockMvc mvc = mvc(context);
+		String ip = "10.253.0.1";
+		UUID alice = UUID.randomUUID();
+		UUID bob = UUID.randomUUID();
+		int[] first = statuses(mvc, LIMIT + 1, () -> request(CATALOG).with(remoteAddr(ip))
+				.with(authentication(authenticationFor(alice, Role.CLIENT))));
+		int[] second = statuses(mvc, 1, () -> request(CATALOG).with(remoteAddr(ip))
+				.with(authentication(authenticationFor(bob, Role.CLIENT))));
+		assertEquals(429, first[LIMIT], "El tercer intento del primer usuario debe dar 429");
+		assertEquals(200, second[0], "Otro usuario desde la misma IP tiene su propio cupo");
 	}
 }
