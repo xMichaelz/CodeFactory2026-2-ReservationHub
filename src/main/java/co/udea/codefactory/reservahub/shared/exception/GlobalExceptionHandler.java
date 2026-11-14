@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -21,8 +20,6 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,15 +31,6 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
 		return ResponseEntity.status(ex.getHttpStatus())
-				.body(new ApiErrorResponse(ex.getErrorCode(), ex.getMessage(), traceId(request)));
-	}
-
-	@ExceptionHandler(AccountLockedException.class)
-	public ResponseEntity<ApiErrorResponse> handleAccountLocked(AccountLockedException ex,
-			HttpServletRequest request) {
-		long retryAfter = Math.max(1, Duration.between(Instant.now(), ex.getLockedUntil()).toSeconds());
-		return ResponseEntity.status(ex.getHttpStatus())
-				.header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfter))
 				.body(new ApiErrorResponse(ex.getErrorCode(), ex.getMessage(), traceId(request)));
 	}
 

@@ -7,7 +7,6 @@ import co.udea.codefactory.reservahub.provider.entity.Provider;
 import co.udea.codefactory.reservahub.provider.mapper.ProviderMapper;
 import co.udea.codefactory.reservahub.provider.repository.ProviderRepository;
 import co.udea.codefactory.reservahub.shared.enums.EntityStatus;
-import co.udea.codefactory.reservahub.shared.exception.ConflictException;
 import co.udea.codefactory.reservahub.shared.exception.ForbiddenException;
 import co.udea.codefactory.reservahub.shared.exception.ResourceNotFoundException;
 import co.udea.codefactory.reservahub.user.entity.User;
@@ -37,7 +36,7 @@ public class ProviderService {
 	public ProviderResponseDTO register(CreateProviderRequestDTO request) {
 		String businessName = request.businessName().trim();
 		if (providerRepository.existsByBusinessNameIgnoreCase(businessName)) {
-			throw new ConflictException("Business name is already registered");
+			throw userService.registrationRejected("businessName", "PROVIDER");
 		}
 
 		User user = userService.createProviderAccount(

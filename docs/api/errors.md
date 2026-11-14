@@ -18,21 +18,28 @@ Formato uniforme:
 | 403 | `FORBIDDEN` |
 | 404 | `RESOURCE_NOT_FOUND` |
 | 409 | `CONFLICT` |
-| 423 | `ACCOUNT_LOCKED` |
 | 429 | `RATE_LIMITED` |
 | 500 | `INTERNAL_ERROR` |
 
 El header de respuesta `X-Trace-Id` coincide con `traceId` cuando el filtro de observabilidad está activo.
 
-## Bloqueo por intentos fallidos (`ACCOUNT_LOCKED`)
+## Login: bloqueo por email + IP con 401 genérico (V-04)
 
-`POST /api/v1/auth/login` cuenta los fallos de contraseña de cada cuenta existente y activa.
+`POST /api/v1/auth/login` cuenta los fallos de cada **pareja email + IP del cliente** (la IP real, resuelta igual que en el límite de peticiones).
 
-- Al llegar a `app.security.lockout.max-attempts` fallos (5 por defecto), la cuenta queda bloqueada durante `app.security.lockout.duration-minutes` minutos (15 por defecto).
-- Mientras dure el bloqueo, el login responde **423** con `errorCode: ACCOUNT_LOCKED`, aunque la contraseña sea correcta. El header `Retry-After` trae los segundos que faltan para el desbloqueo. Los intentos hechos durante el bloqueo no se cuentan.
-- Cuando el bloqueo vence, el contador vuelve a 0. Un login correcto también lo pone en 0.
-- Un email que no existe, o una cuenta inactiva, siempre responde **401** `UNAUTHORIZED` con el mensaje genérico `Invalid credentials` y no se bloquea nunca.
-- En la auditoría quedan las acciones `LOGIN_FAILED` y `LOGIN_LOCKED`.
+- Al llegar a `app.security.lockout.max-attempts` fallos (5 por defecto) la pareja queda frenada `app.security.lockout.duration-minutes` minutos (15 por defecto). La misma cuenta sigue entrando desde otra IP, así que un atacante no puede bloquear a la víctima.
+- Email inexistente, cuenta inactiva, clave errónea y pareja frenada responden **lo mismo**: **401** `UNAUTHORIZED`, mensaje `Invalid credentials`, sin `Retry-After`. Siempre se hace una comparación BCrypt (contra un hash ficticio si no hay cuenta o la pareja está frenada), para que el tiempo de respuesta no delate si el email existe.
+- La racha se olvida al vencer el bloqueo o tras `duration-minutes` sin fallos; un login correcto la pone en 0. El contador vive en memoria (Caffeine, máx. 100 000 parejas) y se pierde al reiniciar.
+- **Ya no existe el 423 `ACCOUNT_LOCKED`** (el front debe dejar de esperarlo, sesión O9).
+- Auditoría: `LOGIN_FAILED` y `LOGIN_LOCKED` con `ip=` (y `userId=none` si el email no existe), `LOGIN_SUCCESS` con IP.
+
+## Registro duplicado (V-05)
+
+`POST /api/v1/users` (email repetido) y `POST /api/v1/providers` (email o nombre de negocio repetido) responden **409** `CONFLICT` con el mismo mensaje genérico: `No se pudo completar el registro con los datos enviados`. Queda el evento `REGISTRATION_REJECTED` con rol, campo e IP, sin el email en claro. El 409 sigue indicando que algo ya existe: riesgo residual aceptado en [ADR-016](../adr/ADR-016.md).
+
+## Búsqueda de clientes (`GET /api/v1/users/lookup`)
+
+Cada búsqueda deja `CLIENT_LOOKUP` con `actor` (id del proveedor), `found=true|false` y `emailHash` (SHA-256 hex del email normalizado en minúsculas), nunca el email en claro. El límite por usuario lo pone el rate limit (`lookup-per-minute`).
 
 ## Límite de peticiones (`RATE_LIMITED`)
 
