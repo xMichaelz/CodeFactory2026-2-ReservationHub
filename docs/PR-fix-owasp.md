@@ -1,6 +1,8 @@
-# fix/owasp: corrección de las 13 vulnerabilidades del informe OWASP
+# fix/owasp → main: corrección de las 13 vulnerabilidades del informe OWASP
 
-Informe de partida: `docs/entregable-arquisoft-sprint2/vulnerabilidades-owasp.md`. Evidencias: `docs/entregable-arquisoft-sprint2/evidencias/` (cada V-xx enlaza a su archivo). Backend: `./mvnw verify` en verde, 0 fallos y 0 omitidos; front: 217 tests, build limpio; e2e 9/9 por HTTPS contra Docker.
+Destino: `main` (ya integra lo último de `main`: CI con SonarCloud, Dependabot y `render.yaml`; `develop` va atrás de `main`).
+
+Informe de partida: `docs/entregable-arquisoft-sprint2/vulnerabilidades-owasp.md`. Evidencias: `docs/entregable-arquisoft-sprint2/evidencias/` (cada V-xx enlaza a su archivo). Backend: `./mvnw verify` en verde, 148 tests, 0 fallos y 0 omitidos; front: 217 tests, build limpio; e2e 9/9 por HTTPS contra Docker.
 
 ## Qué se hizo por vulnerabilidad
 
@@ -16,7 +18,7 @@ Informe de partida: `docs/entregable-arquisoft-sprint2/vulnerabilidades-owasp.md
 | V-08 | CSP, HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, no-store en SPA y API | V-08-cabeceras.txt |
 | V-09 | Mitigada: CSP estricta y sesión que caduca sola; el token sigue en `sessionStorage` | V-09-csp-sesion.txt |
 | V-10 | Contenedores sin root (API uid 10001, Nginx `nginx-unprivileged`), imágenes por digest | V-10-no-root-digest.txt |
-| V-11 | Dependabot + workflow `seguridad.yml` (OSV-Scanner + Trivy) en ambos repos; `pnpm audit` limpio; se fijaron Tomcat 11.0.25 y Jackson 2.21.7/3.1.7 (OSV-Scanner halló 18 vulnerabilidades) | V-11-dependencias.txt |
+| V-11 | Dependabot + workflow `seguridad.yml` (OSV-Scanner + Trivy) en ambos repos; `pnpm audit` limpio; OSV-Scanner halló 18 vulnerabilidades en Tomcat y Jackson; Spring Boot 4.1.2 ya trae Tomcat 11.0.27 y Jackson 2.21.7/3.1.7, así que se quitaron los overrides y el escáner sale limpio | V-11-dependencias.txt |
 | V-12 | Auditoría en JSON (logstash) con contadores Micrometer y `scripts/alerta-seguridad.sh`; arreglado el `traceId` duplicado que tiraba las líneas | V-12-auditoria-alerta.txt |
 | V-13 | Mitigada: 3 altas de proveedor por hora y por IP + evento `PROVIDER_REGISTERED` | V-13-alta-proveedores.txt |
 
@@ -32,12 +34,25 @@ Informe de partida: `docs/entregable-arquisoft-sprint2/vulnerabilidades-owasp.md
 
 ## Orden de fusión
 
-1. Backend `fix/owasp` -> `develop`.
+1. Backend `fix/owasp` -> `main`.
 2. Front `fix/owasp` -> `main` (necesita la red y el servicio `app` del backend ya fusionado).
 
-## Diagrama de despliegue (pendiente de regenerar)
+## Despliegue en Render
 
-`diagrama-despliegue.drawio/.png/.pdf` sigue mostrando el estado anterior. Debe reflejar: Nginx con `8443` TLS y `8081` redirigiendo (ya no `8081 -> 80`); imagen `nginx-unprivileged`; API (`expose 8080`) y BD sin puertos al host; red `reservahub-backend`; nota de `compose.dev.yaml` (127.0.0.1:8080/5433). Se regenera con `fuentes-diagrama/generar_diagrama.py` (sesión O11).
+`render.yaml` se adaptó a las correcciones:
+
+- `DB_OWNER_USERNAME`/`DB_OWNER_PASSWORD` (Flyway migra con el dueño, V-07). Render da un único usuario, así que apuntan al mismo que `DB_USERNAME`/`DB_PASSWORD`; el usuario sin DDL solo existe en Docker.
+- `RATE_LIMIT_TRUSTED_PROXIES` acepta la red interna `10.x` del balanceador de Render, para que el rate limit (V-03) use la IP real del cliente y no la del proxy.
+- `JWT_EXPIRATION_MS=1800000` (sesión de 30 min, V-09) y `JWT_SECRET` generado por Render (`generateValue`), sin valor por defecto en el código (V-01).
+
+## OWASP ZAP (baseline)
+
+| Versión | URL | Medias | Bajas |
+|---|---|---|---|
+| Antes | `http://localhost:8081` | 3 | 6 |
+| Después | `https://localhost:8443` | 1 | 3 |
+
+La Media que queda es «Sub Resource Integrity Attribute Missing» por la hoja de Google Fonts del front (no admite hash; la acota la CSP). Se elimina sirviendo las fuentes desde Nginx.
 
 ## Pendiente conocido
 
