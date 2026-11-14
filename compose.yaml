@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: reservahub
       POSTGRES_USER: reservahub
-      POSTGRES_PASSWORD: reservahub
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD en .env}
     ports:
       # Host 5433 avoids clashing with a local PostgreSQL on 5432
       - "5433:5432"
@@ -26,9 +26,10 @@ services:
     environment:
       DB_URL: jdbc:postgresql://db:5432/reservahub
       DB_USERNAME: reservahub
-      DB_PASSWORD: reservahub
-      JWT_SECRET: change-me-to-a-long-random-secret-at-least-256-bits-long!!
-      JWT_EXPIRATION_MS: "3600000"
+      DB_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD en .env}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET en .env (openssl rand -base64 48)}
+      JWT_EXPIRATION_MS: "${JWT_EXPIRATION_MS:-1800000}"
+      SWAGGER_ENABLED: "${SWAGGER_ENABLED:-false}"
       SERVER_PORT: "8080"
     ports:
       - "8080:8080"

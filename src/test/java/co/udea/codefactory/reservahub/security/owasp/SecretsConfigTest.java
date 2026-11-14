@@ -2,7 +2,6 @@ package co.udea.codefactory.reservahub.security.owasp;
 
 import co.udea.codefactory.reservahub.security.jwt.JwtProperties;
 import co.udea.codefactory.reservahub.security.jwt.JwtService;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -37,7 +36,6 @@ class SecretsConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-01 · O3")
 	void applicationPropertiesHaveNoDefaultSecrets() throws Exception {
 		Properties p = OwaspTestSupport.mainProperties();
 		List<String> failures = new ArrayList<>();
@@ -51,7 +49,6 @@ class SecretsConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-01 · O3")
 	@SuppressWarnings("unchecked")
 	void composeHasNoLiteralSecrets() throws Exception {
 		Map<String, Object> compose = new Yaml().load(OwaspTestSupport.read("compose.yaml"));
@@ -101,7 +98,6 @@ class SecretsConfigTest {
 	}
 
 	@Test
-	@Disabled("pendiente V-01 · O3")
 	void startupFailsWithoutJwtSecret() throws Exception {
 		runnerWithMainProperties().run(ctx -> assertThat(ctx).hasFailed());
 	}

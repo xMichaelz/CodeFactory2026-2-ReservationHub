@@ -4,7 +4,6 @@ import co.udea.codefactory.reservahub.AbstractIntegrationTest;
 import co.udea.codefactory.reservahub.security.jwt.JwtService;
 import co.udea.codefactory.reservahub.shared.enums.Role;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,7 +34,6 @@ class SwaggerExposureTest extends AbstractIntegrationTest {
 	private JwtService jwtService;
 
 	@Test
-	@Disabled("pendiente V-06 · O3")
 	void swaggerIsNotPublishedByDefault() throws Exception {
 		MockMvc mvc = mvc(context);
 		UUID user = UUID.randomUUID();
