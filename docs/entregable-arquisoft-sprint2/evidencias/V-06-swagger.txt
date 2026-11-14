@@ -1,0 +1,11 @@
+# V-06 · Swagger apagado por defecto
+# Fecha: 2026-11-14 10:46 -05 · Stack: docker compose (compose.yaml, sin compose.dev) en el Mac
+
+$ curl -ks -o /dev/null -w "%{http_code}" https://localhost:8443/api/v3/api-docs  (vía Nginx: ruta inexistente y sin token, responde 401, nunca documentación)
+401
+$ curl -ks -o /dev/null -w "%{http_code}" https://localhost:8443/api/swagger-ui.html
+401
+$ directo a la API desde la red interna: /v3/api-docs
+  HTTP/1.1 404 
+$ docker exec reservahub-app env | grep SWAGGER
+SWAGGER_ENABLED=false

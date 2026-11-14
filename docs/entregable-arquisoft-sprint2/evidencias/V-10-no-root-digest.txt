@@ -1,0 +1,23 @@
+# V-10 · Contenedores sin root e imágenes fijadas por digest
+# Fecha: 2026-11-14 10:53 -05
+
+$ docker exec reservahub-app id
+uid=10001(app) gid=10001(app) groups=10001(app)
+$ docker exec reservahub-web id
+uid=101(nginx) gid=101(nginx) groups=101(nginx)
+$ docker exec reservahub-db sh -c "ps -o user,comm | head -3"  (PostgreSQL oficial: proceso postgres con el usuario postgres, no root)
+USER     COMMAND
+postgres postgres
+postgres postgres
+
+$ grep -n "^FROM\|^USER" Dockerfile (backend)
+2:FROM eclipse-temurin:25-jdk@sha256:b8705e936964c228dfce359e63dbf08f6c69cb380ed1d576b1f6b1064f15567d AS build
+11:FROM eclipse-temurin:25-jre@sha256:a640968ae55027b322cedd5f8228b01a84baff0b9e9360e47601c6a111ba1699
+15:USER app
+
+$ grep -n "^FROM" Dockerfile (front)
+2:FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS build
+12:FROM nginxinc/nginx-unprivileged:1.27-alpine@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c23cb0ff1a132b7bfe0547e4c0
+
+$ grep -n "image:" compose.yaml
+5:    image: postgres:16-alpine@sha256:f377d590e5474681d4d7838635031a2b50647923b7abfa803ce9b5ff35d5c663

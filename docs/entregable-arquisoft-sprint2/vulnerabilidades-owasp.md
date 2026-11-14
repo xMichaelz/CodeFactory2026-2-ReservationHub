@@ -10,21 +10,21 @@
 
 ## 2. Resumen
 
-| ID | Vulnerabilidad | OWASP Top 10:2025 | OWASP API 2023 | Severidad |
-|---|---|---|---|---|
-| V-01 | Secreto JWT y credenciales de BD por defecto en el código | A04 Fallas criptográficas · A02 Configuración insegura | API8 Configuración de seguridad incorrecta | **Alta** |
-| V-02 | Sin HTTPS/TLS en el despliegue | A04 Fallas criptográficas | API8 | **Alta** |
-| V-03 | Sin limitación de tasa (rate limiting) en endpoints públicos y costosos | A06 Diseño inseguro | API4 Consumo de recursos sin restricción | **Media** |
-| V-04 | Bloqueo de cuenta explotable para denegar el servicio y enumerar usuarios | A07 Fallas de autenticación | API2 Autenticación rota | **Media** |
-| V-05 | Enumeración de usuarios en el registro y en la búsqueda de clientes | A07 Fallas de autenticación | API3 / API6 Flujos de negocio sensibles | **Media** |
-| V-06 | Swagger UI y OpenAPI públicos | A02 Configuración insegura | API9 Gestión inadecuada del inventario | **Media** |
-| V-07 | Base de datos expuesta al host (puerto 5433) | A02 Configuración insegura | API8 | **Media** |
-| V-08 | Sin cabeceras de seguridad HTTP (CSP, HSTS, X-Frame-Options…) | A02 Configuración insegura | API8 | **Media** |
-| V-09 | JWT guardado en `sessionStorage` (accesible ante un XSS) | A07 Fallas de autenticación | API2 | **Baja** |
-| V-10 | Contenedores ejecutándose como `root` e imágenes sin fijar por digest | A02 · A03 Fallas en la cadena de suministro | API8 | **Baja** |
-| V-11 | Sin análisis automático de dependencias vulnerables (SCA) | A03 Fallas en la cadena de suministro | API10 | **Baja** |
-| V-12 | Auditoría solo en logs locales, sin alertas | A09 Fallas en registro y alertas | — | **Baja** |
-| V-13 | Auto-registro abierto de proveedores | A06 Diseño inseguro | API6 Flujos de negocio sensibles | **Baja** |
+| ID | Vulnerabilidad | OWASP Top 10:2025 | OWASP API 2023 | Severidad | Estado |
+|---|---|---|---|---|---|
+| V-01 | Secreto JWT y credenciales de BD por defecto en el código | A04 Fallas criptográficas · A02 Configuración insegura | API8 Configuración de seguridad incorrecta | **Alta** | Corregida |
+| V-02 | Sin HTTPS/TLS en el despliegue | A04 Fallas criptográficas | API8 | **Alta** | Corregida |
+| V-03 | Sin limitación de tasa (rate limiting) en endpoints públicos y costosos | A06 Diseño inseguro | API4 Consumo de recursos sin restricción | **Media** | Corregida |
+| V-04 | Bloqueo de cuenta explotable para denegar el servicio y enumerar usuarios | A07 Fallas de autenticación | API2 Autenticación rota | **Media** | Corregida |
+| V-05 | Enumeración de usuarios en el registro y en la búsqueda de clientes | A07 Fallas de autenticación | API3 / API6 Flujos de negocio sensibles | **Media** | Corregida con riesgo residual (409 en el registro, ADR-016) |
+| V-06 | Swagger UI y OpenAPI públicos | A02 Configuración insegura | API9 Gestión inadecuada del inventario | **Media** | Corregida |
+| V-07 | Base de datos expuesta al host (puerto 5433) | A02 Configuración insegura | API8 | **Media** | Corregida |
+| V-08 | Sin cabeceras de seguridad HTTP (CSP, HSTS, X-Frame-Options…) | A02 Configuración insegura | API8 | **Media** | Corregida |
+| V-09 | JWT guardado en `sessionStorage` (accesible ante un XSS) | A07 Fallas de autenticación | API2 | **Baja** | Mitigada (CSP y sesión que caduca; el token sigue en sessionStorage) |
+| V-10 | Contenedores ejecutándose como `root` e imágenes sin fijar por digest | A02 · A03 Fallas en la cadena de suministro | API8 | **Baja** | Corregida |
+| V-11 | Sin análisis automático de dependencias vulnerables (SCA) | A03 Fallas en la cadena de suministro | API10 | **Baja** | Corregida (Trivy corre en CI) |
+| V-12 | Auditoría solo en logs locales, sin alertas | A09 Fallas en registro y alertas | — | **Baja** | Mitigada (logs JSON + alerta por umbral, sin ELK) |
+| V-13 | Auto-registro abierto de proveedores | A06 Diseño inseguro | API6 Flujos de negocio sensibles | **Baja** | Mitigada (límite 3/h por IP + auditoría, sin aprobación) |
 
 Total: **2 altas, 6 medias, 5 bajas**.
 
