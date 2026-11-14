@@ -1,6 +1,9 @@
 # Build stage
 FROM eclipse-temurin:25-jdk@sha256:b8705e936964c228dfce359e63dbf08f6c69cb380ed1d576b1f6b1064f15567d AS build
 WORKDIR /workspace
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates unzip \
+    && rm -rf /var/lib/apt/lists/*
 COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .

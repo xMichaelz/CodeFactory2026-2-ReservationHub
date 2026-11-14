@@ -37,6 +37,7 @@ seguridad.yml
 $ osv-scanner scan source -L pom.xml   (osv-scanner 2.7.1, instalado con brew)
 Antes de esta sesión: Total 5 packages affected by 18 known vulnerabilities (4 Critical, 10 High, 4 Medium) en tomcat-embed-core 11.0.24, jackson 2.21.5 y 3.1.5.
 Corrección: pom.xml fija tomcat.version=11.0.25, jackson-2-bom.version=2.21.7, jackson-bom.version=3.1.7.
+Actualización (O13b, 2026-11-14): al integrar main se subió a Spring Boot 4.1.2, que ya trae Tomcat 11.0.27 y Jackson 2.21.7/3.1.7; se quitaron los overrides de pom.xml. osv-scanner scan source --lockfile pom.xml: "No issues found".
 Scanned /Users/edudelahoz/Desktop/Desarrollo/CodeFactory2026-2-ReservationHub/pom.xml file and found 23 packages
 No issues found
 

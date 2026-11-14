@@ -59,6 +59,9 @@ class AuthServiceTest {
 	private static final Instant NOW = Instant.parse("2026-10-12T10:00:00Z");
 	private static final String IP_A = "203.0.113.10";
 	private static final String IP_B = "203.0.113.20";
+	private static final LoginRequestDTO CORRECT_LOGIN = new LoginRequestDTO("ana@example.com", "Secret123");
+	private static final LoginRequestDTO WRONG_PASSWORD = new LoginRequestDTO("ana@example.com", "wrong");
+	private static final LoginRequestDTO UNKNOWN_EMAIL = new LoginRequestDTO("nadie@example.com", "wrong");
 
 	private AuthService authService;
 	private MutableClock clock;
@@ -111,7 +114,7 @@ class AuthServiceTest {
 		when(jwtService.generateToken(user)).thenReturn("jwt-token");
 		when(jwtService.getExpirationMs()).thenReturn(3600000L);
 
-		var response = authService.login(new LoginRequestDTO("ana@example.com", "Secret123"));
+		var response = authService.login(CORRECT_LOGIN);
 
 		assertEquals("jwt-token", response.accessToken());
 		assertEquals(Role.CLIENT, response.role());
@@ -124,7 +127,7 @@ class AuthServiceTest {
 		when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
 		assertThrows(UnauthorizedException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+				() -> authService.login(WRONG_PASSWORD));
 	}
 
 	@Test
@@ -135,7 +138,7 @@ class AuthServiceTest {
 
 		for (int i = 0; i < 5; i++) {
 			assertThrows(UnauthorizedException.class,
-					() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+					() -> authService.login(WRONG_PASSWORD));
 		}
 
 		lenient().when(passwordEncoder.matches("Secret123", "hash")).thenReturn(true);
@@ -234,7 +237,7 @@ class AuthServiceTest {
 
 		for (int i = 0; i < 7; i++) {
 			UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-					() -> authService.login(new LoginRequestDTO("nadie@example.com", "wrong")));
+					() -> authService.login(UNKNOWN_EMAIL));
 			assertEquals(ErrorCodes.UNAUTHORIZED, ex.getErrorCode());
 			assertEquals("Invalid credentials", ex.getMessage());
 		}
@@ -247,7 +250,7 @@ class AuthServiceTest {
 		when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
 
 		UnauthorizedException ex = assertThrows(UnauthorizedException.class,
-				() -> authService.login(new LoginRequestDTO("ana@example.com", "wrong")));
+				() -> authService.login(WRONG_PASSWORD));
 		assertEquals("Invalid credentials", ex.getMessage());
 		assertEquals(0, user.getFailedAttempts());
 	}

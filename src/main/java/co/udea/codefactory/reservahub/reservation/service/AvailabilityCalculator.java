@@ -51,19 +51,23 @@ public final class AvailabilityCalculator {
 		List<TimeRange> free = new ArrayList<>();
 		for (TimeRange window : sortedByStart(query.windows())) {
 			for (TimeRange slot : slotsOf(window, query.durationMinutes())) {
-				if (earliestStart != null && !slot.start().isAfter(earliestStart)) {
-					continue;
+				if (isBookable(slot, earliestStart, query, confirmed)) {
+					free.add(slot);
 				}
-				if (query.blocks().stream().anyMatch(slot::overlaps)) {
-					continue;
-				}
-				if (!hasCapacity(slot, confirmed, query.resources())) {
-					continue;
-				}
-				free.add(slot);
 			}
 		}
 		return free;
+	}
+
+	private static boolean isBookable(TimeRange slot, LocalTime earliestStart, AvailabilityQuery query,
+			List<BookedSlot> confirmed) {
+		if (earliestStart != null && !slot.start().isAfter(earliestStart)) {
+			return false;
+		}
+		if (query.blocks().stream().anyMatch(slot::overlaps)) {
+			return false;
+		}
+		return hasCapacity(slot, confirmed, query.resources());
 	}
 
 	private static boolean hasCapacity(TimeRange slot, List<BookedSlot> confirmed, List<RequiredResource> resources) {
@@ -105,7 +109,7 @@ public final class AvailabilityCalculator {
 		int end = window.end().toSecondOfDay();
 		int step = durationMinutes * 60;
 		for (int start = window.start().toSecondOfDay(); start + step <= end; start += step) {
-			slots.add(new TimeRange(LocalTime.ofSecondOfDay(start), LocalTime.ofSecondOfDay(start + step)));
+			slots.add(new TimeRange(LocalTime.ofSecondOfDay(start), LocalTime.ofSecondOfDay((long) start + step)));
 		}
 		return slots;
 	}

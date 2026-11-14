@@ -22,13 +22,8 @@ import co.udea.codefactory.reservahub.shared.enums.EntityStatus;
 import co.udea.codefactory.reservahub.shared.enums.Role;
 import co.udea.codefactory.reservahub.shared.exception.BusinessException;
 import co.udea.codefactory.reservahub.shared.exception.ConflictException;
-import co.udea.codefactory.reservahub.shared.exception.ErrorCodes;
-import co.udea.codefactory.reservahub.shared.exception.ForbiddenException;
 import co.udea.codefactory.reservahub.shared.exception.ResourceNotFoundException;
 import co.udea.codefactory.reservahub.shared.time.TimeRange;
-import co.udea.codefactory.reservahub.user.entity.User;
-import co.udea.codefactory.reservahub.user.repository.UserRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +40,11 @@ public class ReservationService {
 
 	static final int MAX_RANGE_DAYS = 31;
 
+	private static final String SERVICE_NOT_FOUND = "Service not found";
+	private static final String PROVIDER_NOT_FOUND = "Provider not found";
+	private static final String RESERVATION_ID = "reservationId=";
+	private static final String ACTOR_ID = " actorId=";
+
 	private final ReservationRepository reservationRepository;
 	private final ReservationHistoryRepository historyRepository;
 	private final CatalogServiceRepository catalogServiceRepository;
@@ -52,12 +52,12 @@ public class ReservationService {
 	private final AvailabilityService availabilityService;
 	private final ReservationMapper reservationMapper;
 	private final AuditLogger auditLogger;
-	private final UserRepository userRepository;
+	private final ReservationAccessPolicy accessPolicy;
 
 	public ReservationService(ReservationRepository reservationRepository,
 			ReservationHistoryRepository historyRepository, CatalogServiceRepository catalogServiceRepository,
 			ProviderRepository providerRepository, AvailabilityService availabilityService,
-			ReservationMapper reservationMapper, AuditLogger auditLogger, UserRepository userRepository) {
+			ReservationMapper reservationMapper, AuditLogger auditLogger, ReservationAccessPolicy accessPolicy) {
 		this.reservationRepository = reservationRepository;
 		this.historyRepository = historyRepository;
 		this.catalogServiceRepository = catalogServiceRepository;
@@ -65,7 +65,7 @@ public class ReservationService {
 		this.availabilityService = availabilityService;
 		this.reservationMapper = reservationMapper;
 		this.auditLogger = auditLogger;
-		this.userRepository = userRepository;
+		this.accessPolicy = accessPolicy;
 	}
 
 	/**
@@ -77,8 +77,8 @@ public class ReservationService {
 	public ReservationResponseDTO create(CreateReservationRequestDTO request) {
 		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
 		CatalogService service = catalogServiceRepository.findById(request.serviceId())
-				.orElseThrow(() -> new ResourceNotFoundException("Service not found"));
-		UUID clientId = clientFor(actor, request, service);
+				.orElseThrow(() -> new ResourceNotFoundException(SERVICE_NOT_FOUND));
+		UUID clientId = accessPolicy.clientFor(actor, request, service);
 		if (service.getStatus() != EntityStatus.ACTIVE) {
 			throw badRequest("The service is not active");
 		}
@@ -88,7 +88,7 @@ public class ReservationService {
 		}
 
 		Provider provider = providerRepository.findByIdForUpdate(service.getProviderId())
-				.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+				.orElseThrow(() -> new ResourceNotFoundException(PROVIDER_NOT_FOUND));
 
 		TimeRange slot = availabilityService.freeSlots(service, request.date(), now).stream()
 				.filter(free -> free.start().equals(request.startTime()))
@@ -119,8 +119,8 @@ public class ReservationService {
 		history.setNewEnd(saved.getEndTime());
 		historyRepository.save(history);
 
-		auditLogger.info("RESERVATION_CREATED", "reservationId=" + saved.getId() + " serviceId=" + service.getId()
-				+ " clientId=" + clientId + " actorId=" + actor.userId() + " date=" + saved.getReservationDate()
+		auditLogger.info("RESERVATION_CREATED", RESERVATION_ID + saved.getId() + " serviceId=" + service.getId()
+				+ " clientId=" + clientId + ACTOR_ID + actor.userId() + " date=" + saved.getReservationDate()
 				+ " start=" + saved.getStartTime());
 		return reservationMapper.toResponse(saved, service, provider);
 	}
@@ -135,17 +135,14 @@ public class ReservationService {
 		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
 		Reservation reservation = reservationRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
-		boolean byProvider = requireOwner(actor, reservation);
+		boolean byProvider = accessPolicy.requireOwner(actor, reservation);
 		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
 			throw new ConflictException("The reservation is already cancelled");
 		}
 		if (!reservation.getReservationDate().atTime(reservation.getStartTime()).isAfter(availabilityService.now())) {
 			throw badRequest("Only future reservations can be cancelled");
 		}
-		String reason = request == null || request.reason() == null ? null : request.reason().strip();
-		if (byProvider && (reason == null || reason.isEmpty())) {
-			throw badRequest("A reason is required when a provider cancels a reservation");
-		}
+		String reason = ReservationAccessPolicy.cancellationReason(byProvider, request == null ? null : request.reason());
 
 		reservation.setStatus(byProvider ? ReservationStatus.CANCELLED_BY_PROVIDER
 				: ReservationStatus.CANCELLED_BY_CLIENT);
@@ -155,18 +152,18 @@ public class ReservationService {
 		history.setReservationId(saved.getId());
 		history.setAction(ReservationAction.CANCELLED);
 		history.setActorUserId(actor.userId());
-		history.setReason(reason == null || reason.isEmpty() ? null : reason);
+		history.setReason(reason);
 		history.setOldDate(saved.getReservationDate());
 		history.setOldStart(saved.getStartTime());
 		history.setOldEnd(saved.getEndTime());
 		historyRepository.save(history);
 
-		auditLogger.info("RESERVATION_CANCELLED", "reservationId=" + saved.getId() + " actorId=" + actor.userId()
+		auditLogger.info("RESERVATION_CANCELLED", RESERVATION_ID + saved.getId() + ACTOR_ID + actor.userId()
 				+ " status=" + saved.getStatus());
 		CatalogService service = catalogServiceRepository.findById(saved.getServiceId())
-				.orElseThrow(() -> new ResourceNotFoundException("Service not found"));
+				.orElseThrow(() -> new ResourceNotFoundException(SERVICE_NOT_FOUND));
 		Provider provider = providerRepository.findById(saved.getProviderId())
-				.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+				.orElseThrow(() -> new ResourceNotFoundException(PROVIDER_NOT_FOUND));
 		return reservationMapper.toResponse(saved, service, provider);
 	}
 
@@ -180,7 +177,7 @@ public class ReservationService {
 		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
 		Reservation reservation = reservationRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
-		requireOwner(actor, reservation);
+		accessPolicy.requireOwner(actor, reservation);
 		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
 			throw new ConflictException("Only confirmed reservations can be rescheduled");
 		}
@@ -192,10 +189,10 @@ public class ReservationService {
 			throw badRequest("The new time must be in the future");
 		}
 		CatalogService service = catalogServiceRepository.findById(reservation.getServiceId())
-				.orElseThrow(() -> new ResourceNotFoundException("Service not found"));
+				.orElseThrow(() -> new ResourceNotFoundException(SERVICE_NOT_FOUND));
 
 		Provider provider = providerRepository.findByIdForUpdate(reservation.getProviderId())
-				.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+				.orElseThrow(() -> new ResourceNotFoundException(PROVIDER_NOT_FOUND));
 
 		TimeRange slot = availabilityService.freeSlots(service, request.date(), now, reservation.getId()).stream()
 				.filter(free -> free.start().equals(request.startTime()))
@@ -226,7 +223,7 @@ public class ReservationService {
 		history.setNewEnd(saved.getEndTime());
 		historyRepository.save(history);
 
-		auditLogger.info("RESERVATION_RESCHEDULED", "reservationId=" + saved.getId() + " actorId=" + actor.userId()
+		auditLogger.info("RESERVATION_RESCHEDULED", RESERVATION_ID + saved.getId() + ACTOR_ID + actor.userId()
 				+ " from=" + history.getOldDate() + "T" + history.getOldStart() + " to=" + saved.getReservationDate()
 				+ "T" + saved.getStartTime());
 		return reservationMapper.toResponse(saved, service, provider);
@@ -241,14 +238,14 @@ public class ReservationService {
 		if (from.isAfter(to)) {
 			throw badRequest("'from' must not be after 'to'");
 		}
-		if (from.plusDays(MAX_RANGE_DAYS - 1).isBefore(to)) {
+		if (from.plusDays(MAX_RANGE_DAYS - 1L).isBefore(to)) {
 			throw badRequest("The range cannot exceed " + MAX_RANGE_DAYS + " days");
 		}
 		AuthenticatedUser actor = SecurityUtils.requireCurrentUser();
 		List<Reservation> reservations;
 		if (actor.hasRole(Role.PROVIDER)) {
 			Provider provider = providerRepository.findByUserId(actor.userId())
-					.orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+					.orElseThrow(() -> new ResourceNotFoundException(PROVIDER_NOT_FOUND));
 			reservations = reservationRepository
 					.findByProviderIdAndReservationDateBetweenOrderByReservationDateAscStartTimeAsc(provider.getId(),
 							from, to);
@@ -268,48 +265,7 @@ public class ReservationService {
 				.toList();
 	}
 
-	/**
-	 * El rol PROVIDER actúa sobre las reservas de su agenda; cualquier otro, sobre las suyas como cliente.
-	 * Devuelve si actúa como proveedor.
-	 */
-	private boolean requireOwner(AuthenticatedUser actor, Reservation reservation) {
-		boolean byProvider = actor.hasRole(Role.PROVIDER);
-		if (byProvider) {
-			if (!providerRepository.existsByIdAndUserId(reservation.getProviderId(), actor.userId())) {
-				throw new ForbiddenException("The reservation does not belong to the provider");
-			}
-		} else if (!reservation.getClientId().equals(actor.userId())) {
-			throw new ForbiddenException("The reservation does not belong to the client");
-		}
-		return byProvider;
-	}
-
-	/**
-	 * El cliente solo reserva para sí. El proveedor indica el cliente (existente, activo y con rol CLIENT) y debe ser
-	 * el dueño del servicio (HU-13).
-	 */
-	private UUID clientFor(AuthenticatedUser actor, CreateReservationRequestDTO request, CatalogService service) {
-		if (!actor.hasRole(Role.PROVIDER)) {
-			if (request.clientId() != null && !request.clientId().equals(actor.userId())) {
-				throw new ForbiddenException("A client can only create reservations for themselves");
-			}
-			return actor.userId();
-		}
-		if (!providerRepository.existsByIdAndUserId(service.getProviderId(), actor.userId())) {
-			throw new ForbiddenException("The service does not belong to the provider");
-		}
-		if (request.clientId() == null) {
-			throw badRequest("clientId is required when a provider creates a reservation");
-		}
-		User client = userRepository.findById(request.clientId())
-				.orElseThrow(() -> new ResourceNotFoundException("Client not found"));
-		if (client.getRole() != Role.CLIENT || client.getStatus() != EntityStatus.ACTIVE) {
-			throw badRequest("The user is not an active client");
-		}
-		return client.getId();
-	}
-
 	private static BusinessException badRequest(String message) {
-		return new BusinessException(ErrorCodes.BAD_REQUEST, message, HttpStatus.BAD_REQUEST.value());
+		return ReservationAccessPolicy.badRequest(message);
 	}
 }
