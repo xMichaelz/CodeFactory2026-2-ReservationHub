@@ -28,7 +28,8 @@ import java.util.function.Predicate;
  *       reservas simultáneas que usan un recurso alcanza su cantidad.</li>
  *   <li>Si el servicio no usa recursos, el proveedor atiende una reserva a la vez (capacidad 1 sobre todas
  *       sus reservas).</li>
- *   <li>Fechas pasadas, huecos de hoy que ya empezaron y servicios inactivos no tienen disponibilidad.</li>
+ *   <li>Fechas pasadas, huecos de hoy que ya empezaron y servicios inactivos no tienen disponibilidad,
+ *       salvo que la consulta pida {@code includePast} (ocupación histórica: entra el día completo).</li>
  * </ul>
  * {@code date} y {@code now} deben estar en la zona del negocio ({@code app.business.zone}).
  */
@@ -39,10 +40,13 @@ public final class AvailabilityCalculator {
 
 	public static List<TimeRange> calculate(AvailabilityQuery query) {
 		LocalDate today = query.now().toLocalDate();
-		if (!query.serviceActive() || query.durationMinutes() <= 0 || query.date().isBefore(today)) {
+		if (!query.serviceActive() || query.durationMinutes() <= 0) {
 			return List.of();
 		}
-		LocalTime earliestStart = query.date().equals(today) ? query.now().toLocalTime() : null;
+		if (!query.includePast() && query.date().isBefore(today)) {
+			return List.of();
+		}
+		LocalTime earliestStart = !query.includePast() && query.date().equals(today) ? query.now().toLocalTime() : null;
 
 		List<BookedSlot> confirmed = query.bookings().stream()
 				.filter(b -> b.status() == ReservationStatus.CONFIRMED)
@@ -142,7 +146,7 @@ public final class AvailabilityCalculator {
 
 	public record AvailabilityQuery(LocalDate date, LocalDateTime now, boolean serviceActive, int durationMinutes,
 			List<TimeRange> windows, List<TimeRange> blocks, List<BookedSlot> bookings,
-			List<RequiredResource> resources) {
+			List<RequiredResource> resources, boolean includePast) {
 
 		public AvailabilityQuery {
 			Objects.requireNonNull(date, "date");
@@ -166,6 +170,7 @@ public final class AvailabilityCalculator {
 			private List<TimeRange> blocks;
 			private List<BookedSlot> bookings;
 			private List<RequiredResource> resources;
+			private boolean includePast;
 
 			private Builder() {
 			}
@@ -210,9 +215,14 @@ public final class AvailabilityCalculator {
 				return this;
 			}
 
+			public Builder includePast(boolean includePast) {
+				this.includePast = includePast;
+				return this;
+			}
+
 			public AvailabilityQuery build() {
 				return new AvailabilityQuery(date, now, serviceActive, durationMinutes, windows, blocks, bookings,
-						resources);
+						resources, includePast);
 			}
 		}
 	}

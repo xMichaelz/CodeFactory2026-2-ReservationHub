@@ -2,7 +2,7 @@
 
 Inventario de los endpoints declarados en los controllers (`@RequestMapping` y métodos HTTP).
 Los roles salen de `SecurityConfig` y de la matriz `EndpointSecurityMatrixTest`.
-La prioridad MoSCoW dice qué tan necesario es el endpoint para reservar un servicio en el Sprint 2.
+La prioridad MoSCoW dice qué tan necesario es el endpoint para reservar un servicio. Los reportes del Sprint 3 son Must porque son las historias asignadas de ese sprint.
 
 Prefijo vigente: `/api/v1`.
 
@@ -29,8 +29,13 @@ Prefijo vigente: `/api/v1`.
 | GET | `/api/v1/reservations/mine` | Lectura F1 | CLIENT, PROVIDER | Should | Historial del cliente y agenda del proveedor. Exige `from` y `to`. |
 | PATCH | `/api/v1/reservations/{id}/cancel` | HU-14, HU-15 | CLIENT, PROVIDER | Must | Libera el cupo. El proveedor debe enviar motivo (HU-15). |
 | PATCH | `/api/v1/reservations/{id}/reschedule` | HU-16 | CLIENT, PROVIDER | Should | Mueve la reserva a otro hueco libre. Si no está libre, la reserva no cambia. |
+| GET | `/api/v1/reports/my-reservations` | HU-17 | CLIENT | Must | Historial propio, pasadas y futuras, con ciclo de vida derivado. `ReportController`. |
+| GET | `/api/v1/reports/business-reservations` | HU-18 | PROVIDER | Must | Todas las reservas del negocio, con datos del cliente, incluidas canceladas y completadas. |
+| GET | `/api/v1/reports/occupancy` | HU-19 | PROVIDER | Must | Huecos ocupados frente a los que ofrecía la agenda. Filtro opcional `serviceId`. |
+| GET | `/api/v1/reports/demand` | HU-20 | PROVIDER | Must | Reservas confirmadas por servicio. Las canceladas no cuentan como servicio prestado. |
+| GET | `/api/v1/reports/cancellations` | HU-21 | PROVIDER | Must | Volumen de cancelaciones, separado por cliente y por proveedor. Filtro opcional `serviceId`. |
 
-Actuator (`/actuator/health`) y Swagger (`/swagger-ui.html`, `/v3/api-docs`) no están en esta tabla: no los declara un controller de negocio.
+Actuator (`/actuator/health`, `/actuator/prometheus`) y Swagger (`/swagger-ui.html`, `/v3/api-docs`) no están en esta tabla: no los declara un controller de negocio. Health sigue público. Prometheus exige JWT, salvo `PROMETHEUS_PUBLIC=true` en el perfil local de Grafana.
 
 ## Versionado y retiro
 

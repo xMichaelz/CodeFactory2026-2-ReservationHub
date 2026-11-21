@@ -50,13 +50,19 @@ public class SecurityConfig {
 	// stateless, se autentica con JWT en el header Authorization y no usa cookies, así que no aplica CSRF.
 	@Bean
 	@SuppressWarnings({"java:S112", "java:S4502"})
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+	SecurityFilterChain securityFilterChain(HttpSecurity http,
+			@Value("${app.observability.prometheus-public:false}") boolean prometheusPublic) throws Exception {
 		http
 				.csrf(AbstractHttpConfigurer::disable)
 				.cors(Customizer.withDefaults())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+				.authorizeHttpRequests(auth -> {
+					auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+					// Prometheus queda detrás del JWT. Solo el perfil local de observabilidad lo abre.
+					if (prometheusPublic) {
+						auth.requestMatchers(HttpMethod.GET, "/actuator/prometheus").permitAll();
+					}
+					auth
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/providers").permitAll()
@@ -69,11 +75,16 @@ public class SecurityConfig {
 						.requestMatchers("/api/v1/schedules/**").hasRole(PROVIDER)
 						.requestMatchers("/api/v1/resources/**").hasRole(PROVIDER)
 						.requestMatchers(HttpMethod.GET, "/api/v1/reservations/mine").hasAnyRole(CLIENT, PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/reports/my-reservations").hasRole(CLIENT)
+						.requestMatchers(HttpMethod.GET, "/api/v1/reports/business-reservations").hasRole(PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/reports/occupancy").hasRole(PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/reports/demand").hasRole(PROVIDER)
+						.requestMatchers(HttpMethod.GET, "/api/v1/reports/cancellations").hasRole(PROVIDER)
 						.requestMatchers(HttpMethod.POST, "/api/v1/reservations").hasAnyRole(CLIENT, PROVIDER)
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/cancel").hasAnyRole(CLIENT, PROVIDER)
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/reservations/*/reschedule").hasAnyRole(CLIENT, PROVIDER)
-						.anyRequest().authenticated()
-				)
+						.anyRequest().authenticated();
+				})
 				.exceptionHandling(ex -> ex
 						.authenticationEntryPoint((request, response, authException) ->
 								writeError(response, HttpServletResponse.SC_UNAUTHORIZED, ErrorCodes.UNAUTHORIZED,

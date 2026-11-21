@@ -8,7 +8,7 @@
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=security_rating)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=arge2004_reservationhubanalysis&metric=sqale_rating)](https://sonarcloud.io/summary/overall?id=arge2004_reservationhubanalysis)
 
-Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 2).
+Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 3).
 
 Arquitectura: **monolito modular** (una sola aplicación Spring Boot), organizada por dominios de negocio con capas `controller / DTO / entity / mapper / repository / service`.
 
@@ -84,6 +84,14 @@ Flyway aplicará `V1__initial_schema.sql` al iniciar.
 docker compose up --build
 ```
 
+Prometheus y Grafana van en un perfil aparte. Hace falta abrir las métricas solo en esa máquina:
+
+```bash
+PROMETHEUS_PUBLIC=true docker compose --profile observability up --build
+```
+
+Grafana: `http://localhost:3000` (admin / admin). Prometheus: `http://localhost:9090`. En Render `PROMETHEUS_PUBLIC` queda en false y `/actuator/prometheus` pide JWT.
+
 ## Despliegue en Render
 
 `render.yaml` crea la API (Docker, Java 25) y PostgreSQL 16 en la región `oregon`. Flyway aplica las migraciones al arrancar, igual que en local. Render genera `JWT_SECRET` y conecta la base por la red privada.
@@ -133,8 +141,15 @@ En el plan gratuito la API se suspende tras un rato sin tráfico: el primer requ
 | POST | `/api/v1/reservations` | HU-12, HU-13 |
 | PATCH | `/api/v1/reservations/{id}/cancel` | HU-14, HU-15 |
 | PATCH | `/api/v1/reservations/{id}/reschedule` | HU-16 |
+| GET | `/api/v1/reports/my-reservations` | HU-17 |
+| GET | `/api/v1/reports/business-reservations` | HU-18 |
+| GET | `/api/v1/reports/occupancy` | HU-19 |
+| GET | `/api/v1/reports/demand` | HU-20 |
+| GET | `/api/v1/reports/cancellations` | HU-21 |
 
 HU-12 es la reserva del cliente para sí mismo. HU-13 es el mismo `POST`: el proveedor envía el `clientId`. En la cancelación, el proveedor debe indicar motivo (HU-15).
+
+Los reportes exigen `from` y `to` (máximo 31 días) y un JWT. HU-17 es solo del cliente. HU-18 a HU-21 son solo del proveedor. El ciclo de vida del historial (`PENDING`, `CONFIRMED`, `COMPLETED`, `CANCELLED`) se calcula al leer; la reserva guardada sigue en `CONFIRMED`, `CANCELLED_BY_CLIENT` o `CANCELLED_BY_PROVIDER`. Contrato: `docs/api/reportes.md`.
 
 Priorización, roles y política de `/api/v1`: `docs/api/apis-priorizadas.md`.
 
@@ -147,7 +162,7 @@ reservahub/
 ├── src/main/java/co/udea/codefactory/reservahub/
 │   ├── user/ provider/ servicecatalog/ schedule/ resource/
 │   ├── reservation/                  # Sprint 2
-│   ├── report/                       # placeholder Sprint futuro
+│   ├── report/                       # Sprint 3: HU-17 .. HU-21
 │   ├── security/ audit/ observability/ shared/
 ├── src/main/resources/db/migration/
 ├── docs/adr/ docs/architecture/ docs/api/

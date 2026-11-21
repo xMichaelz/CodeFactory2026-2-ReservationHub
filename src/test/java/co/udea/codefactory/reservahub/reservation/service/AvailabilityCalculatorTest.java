@@ -132,6 +132,19 @@ class AvailabilityCalculatorTest {
 	}
 
 	@Test
+	void includePastCountsTheFullGridEvenWhenTheDayAlreadyHappened() {
+		var past = NOW.toLocalDate().minusDays(1);
+		var slots = AvailabilityCalculator.calculate(query()
+				.date(past)
+				.now(NOW)
+				.includePast(true)
+				.bookings(List.of(booking(hours(10, 11), ReservationStatus.CONFIRMED)))
+				.build());
+
+		assertThat(slots).containsExactly(hours(9, 10), hours(11, 12));
+	}
+
+	@Test
 	void todayOnlyOffersSlotsThatHaveNotStarted() {
 		var slots = AvailabilityCalculator.calculate(query()
 				.date(NOW.toLocalDate())

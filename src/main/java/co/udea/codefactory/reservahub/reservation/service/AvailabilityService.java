@@ -115,8 +115,40 @@ public class AvailabilityService {
 		return freeSlots(service, date, now, required, resourcesByService, ignoredReservationId);
 	}
 
+	/**
+	 * Huecos que la agenda ofrece ese día (sin reservas) y los que siguen libres. Cuenta también fechas pasadas
+	 * y huecos ya iniciados: la ocupación histórica no usa el recorte de la disponibilidad en vivo.
+	 */
+	public SlotLoad slotLoad(CatalogService service, LocalDate date) {
+		List<RequiredResource> required = requiredResources(service.getId());
+		Map<UUID, Set<UUID>> resourcesByService = new HashMap<>();
+		resourcesByService.put(service.getId(), idsOf(required));
+		LocalDateTime anchor = date.atStartOfDay();
+		int offered = AvailabilityCalculator
+				.calculate(query(service, date, anchor, required, resourcesByService, null, true, true).build())
+				.size();
+		int free = AvailabilityCalculator
+				.calculate(query(service, date, anchor, required, resourcesByService, null, true, false).build())
+				.size();
+		return new SlotLoad(offered, free);
+	}
+
+	/** {@code offered} es la grilla de la agenda; {@code free} lo que sigue libre. Ocupados = offered − free. */
+	public record SlotLoad(int offered, int free) {
+		public int occupied() {
+			return Math.max(0, offered - free);
+		}
+	}
+
 	private List<TimeRange> freeSlots(CatalogService service, LocalDate date, LocalDateTime now,
 			List<RequiredResource> required, Map<UUID, Set<UUID>> resourcesByService, UUID ignoredReservationId) {
+		return AvailabilityCalculator.calculate(
+				query(service, date, now, required, resourcesByService, ignoredReservationId, false, false).build());
+	}
+
+	private AvailabilityQuery.Builder query(CatalogService service, LocalDate date, LocalDateTime now,
+			List<RequiredResource> required, Map<UUID, Set<UUID>> resourcesByService, UUID ignoredReservationId,
+			boolean includePast, boolean ignoreBookings) {
 		List<AttentionSchedule> schedules = scheduleRepository.findByProviderIdAndDayOfWeek(service.getProviderId(),
 				co.udea.codefactory.reservahub.shared.enums.DayOfWeek.valueOf(date.getDayOfWeek().name()));
 		List<TimeRange> windows = schedules.stream()
@@ -124,13 +156,12 @@ public class AvailabilityService {
 		List<TimeRange> blocks = schedules.stream()
 				.flatMap(s -> blockRepository.findByScheduleIdAndBlockDate(s.getId(), date).stream())
 				.map(b -> new TimeRange(b.getStartTime(), b.getEndTime())).toList();
-		List<BookedSlot> bookings = bookingsOf(service.getProviderId(), date, resourcesByService,
-				ignoredReservationId);
-
-		return AvailabilityCalculator.calculate(AvailabilityQuery.builder().date(date).now(now)
-				.serviceActive(service.getStatus() == EntityStatus.ACTIVE)
+		List<BookedSlot> bookings = ignoreBookings ? List.of()
+				: bookingsOf(service.getProviderId(), date, resourcesByService, ignoredReservationId);
+		boolean active = includePast || service.getStatus() == EntityStatus.ACTIVE;
+		return AvailabilityQuery.builder().date(date).now(now).serviceActive(active)
 				.durationMinutes(service.getDurationMinutes()).windows(windows).blocks(blocks)
-				.bookings(bookings).resources(required).build());
+				.bookings(bookings).resources(required).includePast(includePast);
 	}
 
 	private List<RequiredResource> requiredResources(UUID serviceId) {

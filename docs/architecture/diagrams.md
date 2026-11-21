@@ -77,3 +77,19 @@ flowchart TB
 ```
 
 En local, `docker compose` sigue levantando la API y PostgreSQL 16 en la máquina del desarrollador. Ese camino no reemplaza el diagrama de arriba.
+
+## Observabilidad local (Sprint 3)
+
+Prometheus y Grafana no están en Render. Se levantan aparte, y solo en ese modo la API deja `/actuator/prometheus` sin JWT:
+
+```bash
+PROMETHEUS_PUBLIC=true docker compose --profile observability up --build
+```
+
+Grafana queda en `http://localhost:3000` (admin / admin) con el tablero `ReservaHub`. Prometheus queda en `http://localhost:9090` y lee `http://app:8080/actuator/prometheus`.
+
+```mermaid
+flowchart LR
+  API[reservahub-app<br/>/actuator/prometheus] --> PROM[Prometheus]
+  PROM --> GRAF[Grafana<br/>tablero ReservaHub]
+```
