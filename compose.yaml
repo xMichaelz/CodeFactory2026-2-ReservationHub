@@ -30,8 +30,35 @@ services:
       JWT_SECRET: change-me-to-a-long-random-secret-at-least-256-bits-long!!
       JWT_EXPIRATION_MS: "3600000"
       SERVER_PORT: "8080"
+      # true solo junto con --profile observability, para que Prometheus pueda leer las métricas.
+      PROMETHEUS_PUBLIC: ${PROMETHEUS_PUBLIC:-false}
     ports:
       - "8080:8080"
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    profiles: ["observability"]
+    volumes:
+      - ./deploy/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    profiles: ["observability"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 
 volumes:
   reservahub_pgdata:

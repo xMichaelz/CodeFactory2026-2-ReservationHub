@@ -27,11 +27,11 @@ Opciones inseguras por defecto, consolas abiertas o cabeceras y endpoints de dia
 | Campo | Detalle |
 |-------|---------|
 | Riesgo en ReservaHub | En producción cualquiera puede leer el contrato completo y probar la API. Un Actuator amplio filtraría estado de la base o del entorno. |
-| Controles | Actuator solo publica `health` y oculta el detalle: `management.endpoints.web.exposure.include=health` y `management.endpoint.health.show-details=never` en `application.properties`. `SecurityConfig` deja público únicamente `/actuator/health`. `spring.jpa.hibernate.ddl-auto=validate`: el esquema lo posee Flyway. CORS usa una lista explícita (`CorsConfigurationSource`); `CorsTest` comprueba el origen de Vite y no un comodín. |
+| Controles | Actuator publica `health` y `prometheus`, y oculta el detalle del health: `management.endpoints.web.exposure.include=health,prometheus`, `management.endpoint.prometheus.access=read-only`, `management.prometheus.metrics.export.enabled=true` y `management.endpoint.health.show-details=never`. `SecurityConfig` deja público únicamente `/actuator/health`. `/actuator/prometheus` exige JWT; solo se abre si `PROMETHEUS_PUBLIC=true` (perfil local de Grafana, apagado por defecto y en Render). `spring.jpa.hibernate.ddl-auto=validate`: el esquema lo posee Flyway. CORS usa una lista explícita (`CorsConfigurationSource`); `CorsTest` comprueba el origen de Vite y no un comodín. |
 | Brechas | Swagger y OpenAPI están en `permitAll` (`/v3/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`) sin perfil que los cierre en Render. Quedan en `https://reservahub-api.onrender.com/swagger-ui.html`. El secreto JWT de desarrollo está escrito en `application.properties` (`change-me-to-a-long-random-secret-...`) y en `compose.yaml`. En Render el secreto lo genera el blueprint; si alguien arranca el jar sin `JWT_SECRET`, usa el valor del repositorio. |
 | Severidad | Alta para Swagger abierto. Media para el secreto por defecto. Baja para Actuator: el health público no muestra componentes. |
 | Acción | Servir Swagger solo fuera de producción, o exigirle JWT. Fallar el arranque si `JWT_SECRET` sigue siendo el valor de ejemplo. |
-| Sprint | 3. Actuator, en su forma actual, se mantiene: Render lo usa como health check. |
+| Sprint | 3. El health público se mantiene porque Render lo usa como health check. Prometheus se agregó en este sprint detrás del token. |
 
 ## A03:2025 Software Supply Chain Failures
 
@@ -147,4 +147,4 @@ Fallar abierto, dejar a medias una transacción o filtrar el error interno al cl
 | Rol tomado solo del JWT, sin releer la cuenta | A01 | Media |
 | Sin Dependabot ni digest de la imagen | A03, A08 | Media |
 | Auditoría solo en logs, sin alerta | A09 | Media |
-| Actuator limitado a health sin detalles | A02 | Control aceptado, no es brecha |
+| Actuator: health público sin detalles; prometheus exige token | A02 | Control aceptado, no es brecha |
