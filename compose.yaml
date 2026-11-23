@@ -32,8 +32,22 @@ services:
       SERVER_PORT: "8080"
       # true solo junto con --profile observability, para que Prometheus pueda leer las métricas.
       PROMETHEUS_PUBLIC: ${PROMETHEUS_PUBLIC:-false}
+      # El frontend en Docker llama por el proxy de nginx (mismo origen); estos orígenes cubren
+      # el acceso directo a la API desde el front en Docker (3001) o con `npm run dev` (5173).
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3001,http://localhost:5173}
     ports:
       - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    container_name: reservahub-frontend
+    depends_on:
+      - app
+    environment:
+      # nginx reenvía /api, /swagger-ui y /actuator a este host:puerto de la red de Compose
+      API_UPSTREAM: app:8080
+    ports:
+      - "3001:80"
 
   prometheus:
     image: prom/prometheus:v3.2.1
