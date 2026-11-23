@@ -43,15 +43,16 @@ public final class AvailabilityCalculator {
 			return List.of();
 		}
 		LocalDate today = query.now().toLocalDate();
-		LocalTime earliestStart = null;
+		LocalTime startLimit = null;
 		if (!query.includePast()) {
 			if (query.date().isBefore(today)) {
 				return List.of();
 			}
 			if (query.date().equals(today)) {
-				earliestStart = query.now().toLocalTime();
+				startLimit = query.now().toLocalTime();
 			}
 		}
+		final LocalTime earliestStart = startLimit;
 
 		List<BookedSlot> confirmed = query.bookings().stream()
 				.filter(b -> b.status() == ReservationStatus.CONFIRMED)
