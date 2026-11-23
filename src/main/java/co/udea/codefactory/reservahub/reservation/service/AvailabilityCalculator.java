@@ -39,28 +39,29 @@ public final class AvailabilityCalculator {
 	}
 
 	public static List<TimeRange> calculate(AvailabilityQuery query) {
-		LocalDate today = query.now().toLocalDate();
 		if (!query.serviceActive() || query.durationMinutes() <= 0) {
 			return List.of();
 		}
-		if (!query.includePast() && query.date().isBefore(today)) {
-			return List.of();
+		LocalDate today = query.now().toLocalDate();
+		LocalTime earliestStart = null;
+		if (!query.includePast()) {
+			if (query.date().isBefore(today)) {
+				return List.of();
+			}
+			if (query.date().equals(today)) {
+				earliestStart = query.now().toLocalTime();
+			}
 		}
-		LocalTime earliestStart = !query.includePast() && query.date().equals(today) ? query.now().toLocalTime() : null;
 
 		List<BookedSlot> confirmed = query.bookings().stream()
 				.filter(b -> b.status() == ReservationStatus.CONFIRMED)
 				.toList();
 
-		List<TimeRange> free = new ArrayList<>();
-		for (TimeRange window : sortedByStart(query.windows())) {
-			for (TimeRange slot : slotsOf(window, query.durationMinutes())) {
-				if (isBookable(slot, earliestStart, query, confirmed)) {
-					free.add(slot);
-				}
-			}
-		}
-		return free;
+		return query.windows().stream()
+				.sorted(Comparator.comparing(TimeRange::start))
+				.flatMap(window -> slotsOf(window, query.durationMinutes()).stream())
+				.filter(slot -> isBookable(slot, earliestStart, query, confirmed))
+				.toList();
 	}
 
 	private static boolean isBookable(TimeRange slot, LocalTime earliestStart, AvailabilityQuery query,
@@ -68,23 +69,16 @@ public final class AvailabilityCalculator {
 		if (earliestStart != null && !slot.start().isAfter(earliestStart)) {
 			return false;
 		}
-		if (query.blocks().stream().anyMatch(slot::overlaps)) {
-			return false;
-		}
-		return hasCapacity(slot, confirmed, query.resources());
+		return query.blocks().stream().noneMatch(slot::overlaps)
+				&& hasCapacity(slot, confirmed, query.resources());
 	}
 
 	private static boolean hasCapacity(TimeRange slot, List<BookedSlot> confirmed, List<RequiredResource> resources) {
 		if (resources.isEmpty()) {
 			return peakUsage(slot, confirmed, b -> true) < 1;
 		}
-		for (RequiredResource resource : resources) {
-			if (peakUsage(slot, confirmed, b -> b.resourceIds().contains(resource.resourceId())) >= resource
-					.quantity()) {
-				return false;
-			}
-		}
-		return true;
+		return resources.stream().allMatch(resource ->
+				peakUsage(slot, confirmed, b -> b.resourceIds().contains(resource.resourceId())) < resource.quantity());
 	}
 
 	/** Máximo de reservas simultáneas dentro del hueco entre las que cumplen el filtro. */
@@ -92,8 +86,10 @@ public final class AvailabilityCalculator {
 		Map<LocalTime, Integer> deltas = new TreeMap<>();
 		for (BookedSlot booking : bookings) {
 			if (uses.test(booking) && booking.range().overlaps(slot)) {
-				LocalTime start = max(booking.range().start(), slot.start());
-				LocalTime end = min(booking.range().end(), slot.end());
+				LocalTime bStart = booking.range().start();
+				LocalTime bEnd = booking.range().end();
+				LocalTime start = bStart.isAfter(slot.start()) ? bStart : slot.start();
+				LocalTime end = bEnd.isBefore(slot.end()) ? bEnd : slot.end();
 				deltas.merge(start, 1, Integer::sum);
 				deltas.merge(end, -1, Integer::sum);
 			}
@@ -118,16 +114,12 @@ public final class AvailabilityCalculator {
 		return slots;
 	}
 
-	private static List<TimeRange> sortedByStart(List<TimeRange> ranges) {
-		return ranges.stream().sorted(Comparator.comparing(TimeRange::start)).toList();
+	private static <T> List<T> copy(List<T> list) {
+		return list == null ? List.of() : List.copyOf(list);
 	}
 
-	private static LocalTime max(LocalTime a, LocalTime b) {
-		return a.isAfter(b) ? a : b;
-	}
-
-	private static LocalTime min(LocalTime a, LocalTime b) {
-		return a.isBefore(b) ? a : b;
+	private static <T> Set<T> copy(Set<T> set) {
+		return set == null ? Set.of() : Set.copyOf(set);
 	}
 
 	/** Reserva existente del proveedor en el día, con los recursos que usa su servicio. */
@@ -136,7 +128,7 @@ public final class AvailabilityCalculator {
 		public BookedSlot {
 			Objects.requireNonNull(range, "range");
 			Objects.requireNonNull(status, "status");
-			resourceIds = resourceIds == null ? Set.of() : Set.copyOf(resourceIds);
+			resourceIds = copy(resourceIds);
 		}
 	}
 
@@ -151,10 +143,10 @@ public final class AvailabilityCalculator {
 		public AvailabilityQuery {
 			Objects.requireNonNull(date, "date");
 			Objects.requireNonNull(now, "now");
-			windows = windows == null ? List.of() : List.copyOf(windows);
-			blocks = blocks == null ? List.of() : List.copyOf(blocks);
-			bookings = bookings == null ? List.of() : List.copyOf(bookings);
-			resources = resources == null ? List.of() : List.copyOf(resources);
+			windows = copy(windows);
+			blocks = copy(blocks);
+			bookings = copy(bookings);
+			resources = copy(resources);
 		}
 
 		public static Builder builder() {
