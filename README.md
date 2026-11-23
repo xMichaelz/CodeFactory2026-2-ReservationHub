@@ -10,6 +10,32 @@
 
 Plataforma de reservas de servicios — **Caso 14 CodeF@ctory UdeA** (Sprint 3).
 
+## 🚀 Inicio rápido (todo con Docker)
+
+Con Docker Desktop corriendo, desde la raíz del repo:
+
+```bash
+docker compose up -d --build
+```
+
+Eso levanta PostgreSQL, la API (Spring Boot) y el frontend (React + nginx). La primera vez tarda unos minutos (compila Maven y Vite). Cuando termine:
+
+| Qué | URL |
+|-----|-----|
+| 🖥️ **Frontend (aplicación web)** | http://localhost:3001 |
+| 🧪 Swagger UI (vía frontend) | http://localhost:3001/swagger-ui.html |
+| 🧪 Swagger UI (API directa) | http://localhost:8080/swagger-ui.html |
+| 📄 OpenAPI JSON | http://localhost:8080/v3/api-docs |
+| ❤️ Health de la API | http://localhost:8080/actuator/health |
+| 🔌 API REST (base) | http://localhost:8080/api/v1 |
+| 🐘 PostgreSQL | `localhost:5433` (usuario/clave/db: `reservahub`) |
+| 📊 Grafana (perfil `observability`) | http://localhost:3000 (admin / admin) |
+| 📈 Prometheus (perfil `observability`) | http://localhost:9090 |
+
+Para detener: `docker compose down` (agrega `-v` para borrar también los datos de PostgreSQL).
+
+**Primer uso:** en http://localhost:3001 crea una cuenta de **proveedor** (“Soy proveedor”), registra un servicio y sus horarios de atención; luego, en otra ventana (o en incógnito), crea una cuenta de **cliente** y reserva desde el catálogo.
+
 Arquitectura: **monolito modular** (una sola aplicación Spring Boot), organizada por dominios de negocio con capas `controller / DTO / entity / mapper / repository / service`.
 
 ## Tecnologías
@@ -25,6 +51,11 @@ Arquitectura: **monolito modular** (una sola aplicación Spring Boot), organizad
 | SpringDoc OpenAPI | Swagger UI |
 | Actuator | `/actuator/health` |
 | Testcontainers | pruebas de integración |
+| React 18 + TypeScript + Vite | frontend (`frontend/`) |
+| React Router | navegación por páginas y rutas protegidas por rol |
+| nginx | sirve el frontend y hace de proxy hacia la API en Docker |
+| Playwright | pruebas E2E rápidas del frontend |
+| Serenity BDD + Screenplay + Cucumber | pruebas de aceptación (`acceptance-tests/`) |
 
 Dependencias extra justificadas: **JJWT** (tokens), **springdoc-openapi** (documentación API exigida), **Testcontainers** (integración con PostgreSQL real).
 
@@ -84,6 +115,8 @@ Flyway aplicará `V1__initial_schema.sql` al iniciar.
 docker compose up --build
 ```
 
+Servicios: `db` (PostgreSQL), `app` (API en `:8080`) y `frontend` (nginx en `:3001`). Ver la tabla de URLs en [Inicio rápido](#-inicio-rápido-todo-con-docker).
+
 Prometheus y Grafana van en un perfil aparte. Hace falta abrir las métricas solo en esa máquina:
 
 ```bash
@@ -110,6 +143,93 @@ Si el frontend no corre en `http://localhost:5173`, cambia `CORS_ALLOWED_ORIGINS
 
 En el plan gratuito la API se suspende tras un rato sin tráfico: el primer request después de eso tarda más. La base gratuita de Render caduca a los 30 días.
 
+## Frontend (React)
+
+Código en `frontend/`. SPA en React 18 + TypeScript + Vite, sin librerías de UI: componentes propios y CSS con tokens (modo claro/oscuro automático).
+
+### Qué se puede hacer desde la UI
+
+Todo lo que expone la API está disponible en el frontend:
+
+| Rol | Página | Endpoints / HU |
+|-----|--------|----------------|
+| Público | Registro de cliente `/register` | `POST /users` (HU-01) |
+| Público | Registro de proveedor `/register/provider` | `POST /providers` (HU-02) |
+| Público | Login `/login` · botón “Cerrar sesión” | `POST /auth/login`, `POST /auth/logout` (HU-03, HU-04) |
+| Cliente | Inicio `/client` | `GET /reservations/mine` |
+| Cliente | Catálogo `/client/catalog` | `GET /catalog/services` |
+| Cliente | Reservar `/client/book/:id` | `GET /services/{id}/availability`, `POST /reservations` (HU-11, HU-12) |
+| Cliente | Mis reservas `/client/reservations` | `GET /reservations/mine`, `PATCH /reservations/{id}/cancel`, `PATCH /reservations/{id}/reschedule` (HU-14, HU-16) |
+| Cliente | Historial `/client/history` | `GET /reports/my-reservations` (HU-17) |
+| Proveedor | Panel `/provider` | `GET /services/mine`, `/resources/mine`, `/schedules/mine`, `/reservations/mine` |
+| Proveedor | Servicios `/provider/services` | `POST /services`, `PUT /services/{id}`, `PATCH /services/{id}/deactivate`, `POST /services/{id}/resources` (HU-05, HU-06, HU-07) |
+| Proveedor | Recursos `/provider/resources` | `GET /resources/mine`, `POST /resources` (HU-10) |
+| Proveedor | Horarios `/provider/schedules` | `POST /schedules`, `POST /schedules/{id}/blocks` (HU-08, HU-09) |
+| Proveedor | Agenda `/provider/agenda` | `GET /reservations/mine`, cancelar con motivo y reprogramar (HU-15, HU-16) |
+| Proveedor | Reservar a cliente `/provider/book` | `GET /users/lookup`, `POST /reservations` con `clientId` (HU-13) |
+| Proveedor | Historial `/provider/history` | `GET /reports/business-reservations` (HU-18) |
+| Proveedor | Reportes `/provider/reports` | `GET /reports/occupancy`, `/reports/demand`, `/reports/cancellations` (HU-19, HU-20, HU-21) |
+
+### Estructura
+
+```text
+frontend/
+├── src/
+│   ├── api/            # cliente HTTP (JWT, errores) + un módulo por dominio + tipos de los DTO
+│   ├── context/        # AuthContext (sesión JWT) y ToastContext (notificaciones)
+│   ├── hooks/          # useAsync / useSubmit
+│   ├── components/
+│   │   ├── layout/     # AppLayout, PublicLayout, ProtectedRoute (guardas por rol)
+│   │   ├── ui/         # Button, Modal, Card, campos, badges, filtros de fechas, gráficos…
+│   │   ├── reservations/ services/ reports/   # componentes de dominio
+│   ├── pages/          # auth/, client/, provider/, shared/
+│   ├── utils/          # fechas (zona America/Bogota), formatos, etiquetas
+│   └── styles/global.css
+├── e2e/                # pruebas Playwright de punta a punta
+├── Dockerfile          # build con Node + runtime nginx
+└── nginx.conf          # SPA + proxy de /api, /swagger-ui, /v3/api-docs y /actuator a la API
+```
+
+En Docker, el navegador solo habla con `http://localhost:3001`; nginx reenvía `/api/**` a la API, así que no hace falta CORS. Con `VITE_API_URL` (build arg) se puede apuntar a otra API, por ejemplo la de Render.
+
+### Desarrollo local del frontend
+
+Con la API corriendo en `:8080` (por ejemplo `docker compose up -d db app`):
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173 (Vite redirige /api a :8080)
+npm run build      # typecheck + build de producción
+```
+
+Si la API está en otro host: `VITE_API_PROXY_TARGET=http://host:puerto npm run dev`.
+
+### Pruebas E2E
+
+Recorren por la UI todas las historias (registro, login/logout, servicios, recursos, horarios, bloqueos, reserva, reprogramación, cancelaciones, reserva a nombre de un cliente, historiales y reportes). Usan el Chrome instalado en la máquina:
+
+```bash
+docker compose up -d --build
+cd frontend
+npm install
+npm run test:e2e                                     # contra http://localhost:3001
+E2E_BASE_URL=http://localhost:5173 npm run test:e2e  # contra npm run dev
+```
+
+## Pruebas de aceptación (Serenity BDD + Screenplay)
+
+En `acceptance-tests/` hay una suite de pruebas de aceptación con **Serenity BDD**, el patrón **Screenplay** y **Cucumber** en español. Las features están organizadas por área: `acceso/`, `cliente/`, `proveedor/` y `e2e/`. Las precondiciones se preparan por API y lo que se prueba ocurre en el navegador. Detalles en [`acceptance-tests/README.md`](acceptance-tests/README.md).
+
+```bash
+docker compose up -d --build        # la app en http://localhost:3001
+cd acceptance-tests
+./gradlew clean test                # todas (gradlew.bat en Windows)
+./gradlew clean test -Dcucumber.filter.tags="@cliente" -Dheadless.mode=true
+```
+
+Reporte HTML de Serenity: `acceptance-tests/target/site/serenity/index.html`.
+
 ## Tests
 
 ```bash
@@ -119,7 +239,8 @@ En el plan gratuito la API se suspende tras un rato sin tráfico: el primer requ
 
 ## Documentación interactiva
 
-- Swagger UI: http://localhost:8080/swagger-ui.html
+- Frontend: http://localhost:3001
+- Swagger UI: http://localhost:8080/swagger-ui.html (también en http://localhost:3001/swagger-ui.html)
 - OpenAPI JSON: http://localhost:8080/v3/api-docs
 - Health: http://localhost:8080/actuator/health
 
@@ -164,6 +285,8 @@ reservahub/
 │   ├── reservation/                  # Sprint 2
 │   ├── report/                       # Sprint 3: HU-17 .. HU-21
 │   ├── security/ audit/ observability/ shared/
+├── frontend/                         # SPA React (ver sección Frontend)
+├── acceptance-tests/                 # Serenity BDD + Screenplay + Cucumber
 ├── src/main/resources/db/migration/
 ├── docs/adr/ docs/architecture/ docs/api/
 ├── postman/
