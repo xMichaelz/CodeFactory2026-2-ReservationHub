@@ -1,2 +1,4 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+/acceptance-tests/gradlew text eol=lf
+*.bat text eol=crlf

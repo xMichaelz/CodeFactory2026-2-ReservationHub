@@ -1,0 +1,82 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("net.serenity-bdd:serenity-gradle-plugin:3.3.4")
+    }
+}
+
+plugins {
+    id 'io.github.jumosqu12.screenplayarchitecture' version '2.0.1'
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+}
+
+group = 'co.edu.udea.calidad'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    serenityVersion = '4.1.0'
+    serenityCucumberVersion = '4.1.0'
+    junit = '4.13.2'
+    hamcrest = '1.3'
+    serenityWebVersion = '4.1.0'
+}
+
+dependencies {
+    implementation "net.serenity-bdd:serenity-core:$rootProject.ext.serenityVersion"
+    implementation "net.serenity-bdd:serenity-junit:$rootProject.ext.serenityVersion"
+    implementation "net.serenity-bdd:serenity-screenplay:$rootProject.ext.serenityVersion"
+    implementation "net.serenity-bdd:serenity-cucumber:$rootProject.ext.serenityCucumberVersion"
+    implementation "net.serenity-bdd:serenity-screenplay-webdriver:$rootProject.ext.serenityWebVersion"
+    // Preparación de datos por API (los "Dado" crean cuentas, servicios y reservas sin pasar por la UI)
+    implementation "net.serenity-bdd:serenity-screenplay-rest:$rootProject.ext.serenityVersion"
+    implementation 'org.slf4j:slf4j-simple:2.0.5'
+
+    //Test compilation
+    testImplementation "junit:junit:$rootProject.ext.junit"
+    testImplementation "org.hamcrest:hamcrest-all:$rootProject.ext.hamcrest"
+}
+
+apply plugin: 'net.serenity-bdd.serenity-gradle-plugin'
+
+tasks.named('test') {
+    // Filtros de Cucumber: -Dcucumber.filter.tags="@cliente" o -Dcucumber.filter.name="..."
+    def cucumberTags = System.getProperty('cucumber.filter.tags')
+    if (cucumberTags) {
+        systemProperty 'cucumber.filter.tags', cucumberTags
+    }
+
+    def cucumberName = System.getProperty('cucumber.filter.name')
+    if (cucumberName) {
+        systemProperty 'cucumber.filter.name', cucumberName
+    }
+
+    // URL del frontend y modo headless: -Dreservahub.url=http://localhost:5173 -Dheadless.mode=true
+    ['reservahub.url', 'headless.mode', 'webdriver.driver'].each { property ->
+        def value = System.getProperty(property)
+        if (value) {
+            systemProperty property, value
+        }
+    }
+
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat 'full'
+    }
+}
