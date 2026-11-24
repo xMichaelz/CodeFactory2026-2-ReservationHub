@@ -11,8 +11,8 @@ import co.edu.udea.calidad.reservahub.tasks.provider.GoToSection;
 import co.edu.udea.calidad.reservahub.tasks.provider.LookUpClient;
 import co.edu.udea.calidad.reservahub.tasks.provider.RescheduleReservation;
 import co.edu.udea.calidad.reservahub.utils.ActorMemory;
-import io.cucumber.java.es.Cuando;
-import io.cucumber.java.es.Entonces;
+import io.cucumber.java.en.When;
+import io.cucumber.java.en.Then;
 import net.serenitybdd.screenplay.Actor;
 import net.serenitybdd.screenplay.actions.Click;
 import net.serenitybdd.screenplay.waits.WaitUntil;
@@ -37,12 +37,12 @@ import static org.hamcrest.Matchers.not;
 public class ProviderAgendaStepDefinitions {
 
     // ---------- agenda ----------
-    @Cuando("el proveedor abre su agenda")
+    @When("the provider opens their agenda")
     public void providerOpensAgenda() {
         Actors.provider().attemptsTo(GoToSection.called("Agenda"));
     }
 
-    @Cuando("el proveedor intenta cancelar la reserva del cliente sin escribir un motivo")
+    @When("the provider tries to cancel the client's reservation without writing a reason")
     public void providerCancelsWithoutReason() {
         String name = clientName();
         Actors.provider().attemptsTo(
@@ -50,7 +50,7 @@ public class ProviderAgendaStepDefinitions {
                 CancelReservationAsProvider.withoutReason(name));
     }
 
-    @Cuando("el proveedor cancela la reserva del cliente con el motivo {string}")
+    @When("the provider cancels the client's reservation with the reason {string}")
     public void providerCancelsWithReason(String reason) {
         String name = clientName();
         Actors.provider().attemptsTo(
@@ -58,7 +58,7 @@ public class ProviderAgendaStepDefinitions {
                 CancelReservationAsProvider.of(name, reason));
     }
 
-    @Cuando("el proveedor reprograma la reserva del cliente a un horario de la semana siguiente")
+    @When("the provider reschedules the client's reservation to a slot in the following week")
     public void providerReschedules() {
         Actor provider = Actors.provider();
         provider.attemptsTo(GoToSection.called("Agenda"));
@@ -66,7 +66,7 @@ public class ProviderAgendaStepDefinitions {
         provider.attemptsTo(RescheduleReservation.ofClient(clientName()));
     }
 
-    @Entonces("el proveedor debería ver en su agenda la reserva del cliente con el estado {string}")
+    @Then("the provider should see the client's reservation in their agenda with the status {string}")
     public void providerShouldSeeReservationStatus(String status) {
         String name = clientName();
         Actor provider = Actors.provider();
@@ -74,7 +74,7 @@ public class ProviderAgendaStepDefinitions {
         provider.should(seeThat(TextOf.the(RESERVATION_STATUS.of(name)), equalTo(status)));
     }
 
-    @Entonces("el proveedor debería ver la reserva del cliente en otro horario")
+    @Then("the provider should see the client's reservation at a different time")
     public void providerShouldSeeReservationMoved() {
         Actor provider = Actors.provider();
         String before = ActorMemory.value(provider);
@@ -82,23 +82,23 @@ public class ProviderAgendaStepDefinitions {
                 allOf(not(equalTo(before)), containsString("Confirmada"))));
     }
 
-    @Entonces("el navegador no debería dejar enviar la cancelación sin motivo")
+    @Then("the browser should not allow submitting the cancellation without a reason")
     public void browserRequiresReason() {
         Actors.provider().should(seeThat(BrowserValidation.of(CANCEL_REASON), equalTo("valueMissing")));
     }
 
     // ---------- reservar a nombre de un cliente ----------
-    @Cuando("el proveedor busca al cliente con el correo {string}")
+    @When("the provider looks up the client with the email {string}")
     public void providerLooksUpEmail(String email) {
         Actors.provider().attemptsTo(GoToSection.called("Reservar a cliente"), LookUpClient.byEmail(email));
     }
 
-    @Cuando("el proveedor busca al cliente por su correo")
+    @When("the provider looks up the client by their email")
     public void providerLooksUpClient() {
         providerLooksUpEmail(clientAccount(Actors.client()).email);
     }
 
-    @Cuando("el proveedor reserva {string} a nombre del cliente en un horario de la semana siguiente")
+    @When("the provider books {string} on behalf of the client in a slot of the following week")
     public void providerBooksForClient(String serviceBaseName) {
         String email = clientAccount(Actors.client()).email;
         Actor provider = Actors.provider();
@@ -107,7 +107,7 @@ public class ProviderAgendaStepDefinitions {
                 BookForClient.of(PreconditionStepDefinitions.serviceOf(provider, serviceBaseName), email));
     }
 
-    @Cuando("el proveedor va a su agenda desde la confirmación")
+    @When("the provider goes to their agenda from the confirmation")
     public void providerGoesToAgendaFromConfirmation() {
         Actors.provider().attemptsTo(
                 Click.on(SEE_AGENDA_LINK),
@@ -115,23 +115,23 @@ public class ProviderAgendaStepDefinitions {
                 WaitUntilLoaded.page());
     }
 
-    @Entonces("el proveedor debería ver que encontró al cliente por su nombre completo")
+    @Then("the provider should see that the client was found by their full name")
     public void providerShouldSeeClientFound() {
         Actors.provider().should(seeThat(TextOf.the(CLIENT_FOUND), equalTo(clientName())));
     }
 
-    @Entonces("el proveedor debería ver la reserva creada a nombre del cliente")
+    @Then("the provider should see the reservation created in the client's name")
     public void providerShouldSeeConfirmation() {
         Actors.provider().should(seeThat(TextOf.the(CONFIRMED_CLIENT), equalTo(clientName())));
     }
 
     // ---------- historial del negocio ----------
-    @Cuando("el proveedor abre el historial del negocio")
+    @When("the provider opens the business history")
     public void providerOpensHistory() {
         Actors.provider().attemptsTo(GoToSection.called("Historial"));
     }
 
-    @Entonces("el proveedor debería ver en el historial la reserva de {string} con el ciclo {string} y el estado {string}")
+    @Then("the provider should see in the history the reservation of {string} with the lifecycle {string} and the status {string}")
     public void providerShouldSeeHistoryRow(String who, String lifecycle, String status) {
         String name = nameOf(who);
         Actor provider = Actors.provider();
@@ -158,9 +158,9 @@ public class ProviderAgendaStepDefinitions {
     /** "el cliente" u "otro cliente" -> el nombre completo con el que se registró. */
     private static String nameOf(String who) {
         switch (who) {
-            case "el cliente":
+            case "the client":
                 return clientName();
-            case "otro cliente":
+            case "another client":
                 return clientAccount(Actors.otherClient()).fullName();
             default:
                 throw new IllegalArgumentException("Actor desconocido: " + who);

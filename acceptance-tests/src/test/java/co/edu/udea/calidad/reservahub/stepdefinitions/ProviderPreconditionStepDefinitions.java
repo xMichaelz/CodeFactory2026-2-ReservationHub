@@ -9,13 +9,13 @@ import co.edu.udea.calidad.reservahub.tasks.api.RegisterProviderThroughApi;
 import co.edu.udea.calidad.reservahub.utils.ActorMemory;
 import co.edu.udea.calidad.reservahub.utils.TestData;
 import co.edu.udea.calidad.reservahub.utils.WeekDays;
-import io.cucumber.java.es.Dado;
+import io.cucumber.java.en.Given;
 import net.serenitybdd.screenplay.Actor;
 
 /** "Dado" adicionales del área del proveedor. Igual que los generales, preparan los datos por API. */
 public class ProviderPreconditionStepDefinitions {
 
-    @Dado("que el proveedor tiene una franja el {string} de {string} a {string}")
+    @Given("the provider has a window on {string} from {string} to {string}")
     public void providerHasScheduleWindow(String day, String startTime, String endTime) {
         Actor provider = Actors.provider();
         if (!ActorMemory.hasProviderAccount(provider)) {
@@ -28,7 +28,7 @@ public class ProviderPreconditionStepDefinitions {
      * El cliente reserva el primer hueco de mañana. A diferencia de "el cliente tiene una reserva",
      * la reserva sigue siendo futura todo el escenario, así que se puede cancelar o reprogramar.
      */
-    @Dado("que el proveedor tiene una cita del cliente mañana para {string}")
+    @Given("the provider has an appointment with the client tomorrow for {string}")
     public void providerHasAppointmentTomorrow(String serviceName) {
         Actor client = Actors.client();
         if (!ActorMemory.hasClientAccount(client)) {

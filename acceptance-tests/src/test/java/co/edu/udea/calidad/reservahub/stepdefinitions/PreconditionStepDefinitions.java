@@ -14,7 +14,7 @@ import co.edu.udea.calidad.reservahub.tasks.api.OpenWeeklyScheduleThroughApi;
 import co.edu.udea.calidad.reservahub.tasks.api.RegisterClientThroughApi;
 import co.edu.udea.calidad.reservahub.tasks.api.RegisterProviderThroughApi;
 import co.edu.udea.calidad.reservahub.utils.ActorMemory;
-import io.cucumber.java.es.Dado;
+import io.cucumber.java.en.Given;
 import net.serenitybdd.screenplay.Actor;
 
 /**
@@ -27,17 +27,17 @@ import net.serenitybdd.screenplay.Actor;
 public class PreconditionStepDefinitions {
 
     // ---------- cuentas ----------
-    @Dado("que el cliente está registrado")
+    @Given("the client is registered")
     public void clientIsRegistered() {
         registerClient(Actors.client(), ClientAccount.random());
     }
 
-    @Dado("que otro cliente llamado {string} {string} está registrado")
+    @Given("another client named {string} {string} is registered")
     public void otherClientIsRegistered(String firstName, String lastName) {
         registerClient(Actors.otherClient(), ClientAccount.named(firstName, lastName));
     }
 
-    @Dado("que el proveedor está registrado")
+    @Given("the provider is registered")
     public void providerIsRegistered() {
         Actor provider = Actors.provider();
         if (!ActorMemory.hasProviderAccount(provider)) {
@@ -46,30 +46,30 @@ public class PreconditionStepDefinitions {
     }
 
     // ---------- sesión en la UI ----------
-    @Dado("que el cliente ha iniciado sesión")
+    @Given("the client is logged in")
     public void clientIsLoggedIn() {
         clientIsRegistered();
         Actors.client().attemptsTo(LoginAs.himself());
     }
 
-    @Dado("que el proveedor ha iniciado sesión")
+    @Given("the provider is logged in")
     public void providerIsLoggedIn() {
         providerIsRegistered();
         Actors.provider().attemptsTo(LoginAs.himself());
     }
 
-    @Dado("que el cliente inicia sesión")
+    @Given("the client signs in again")
     public void clientLogsInAgain() {
         Actors.client().attemptsTo(LoginAs.himself());
     }
 
-    @Dado("que el proveedor inicia sesión")
+    @Given("the provider signs in again")
     public void providerLogsInAgain() {
         Actors.provider().attemptsTo(LoginAs.himself());
     }
 
     // ---------- negocio del proveedor ----------
-    @Dado("que el proveedor ofrece el servicio {string} con agenda abierta toda la semana")
+    @Given("the provider offers the service {string} with an all-week open schedule")
     public void providerOffersServiceWithOpenAgenda(String serviceName) {
         providerIsRegistered();
         Actor provider = Actors.provider();
@@ -80,13 +80,13 @@ public class PreconditionStepDefinitions {
         }
     }
 
-    @Dado("que el proveedor tiene el servicio {string}")
+    @Given("the provider has the service {string}")
     public void providerHasService(String serviceName) {
         providerIsRegistered();
         Actors.provider().attemptsTo(CreateServiceThroughApi.with(ServiceInfo.named(serviceName)));
     }
 
-    @Dado("que el proveedor tiene el recurso {string}")
+    @Given("the provider has the resource {string}")
     public void providerHasResource(String resourceName) {
         providerIsRegistered();
         ResourceInfo resource = ResourceInfo.named(resourceName);
@@ -94,21 +94,21 @@ public class PreconditionStepDefinitions {
         ActorMemory.rememberValue(Actors.provider(), resource.name);
     }
 
-    @Dado("que el proveedor desactivó el servicio {string}")
+    @Given("the provider deactivated the service {string}")
     public void providerDeactivatedService(String serviceName) {
         Actor provider = Actors.provider();
         provider.attemptsTo(DeactivateServiceThroughApi.of(serviceOf(provider, serviceName)));
     }
 
     // ---------- reservas ----------
-    @Dado("que el cliente tiene una reserva del servicio {string}")
+    @Given("the client has a reservation for the service {string}")
     public void clientHasReservation(String serviceName) {
         clientIsRegisteredOnce();
         Actors.client().attemptsTo(BookFreeSlotThroughApi.skipping(
                 ActorMemory.reservationsCount(Actors.client()), serviceOf(Actors.provider(), serviceName)));
     }
 
-    @Dado("que otro cliente tiene una reserva del servicio {string}")
+    @Given("another client has a reservation for the service {string}")
     public void otherClientHasReservation(String serviceName) {
         Actor other = Actors.otherClient();
         if (!ActorMemory.hasClientAccount(other)) {
@@ -118,13 +118,13 @@ public class PreconditionStepDefinitions {
         other.attemptsTo(BookFreeSlotThroughApi.skipping(5, serviceOf(Actors.provider(), serviceName)));
     }
 
-    @Dado("que el cliente canceló esa reserva")
+    @Given("the client cancelled that reservation")
     public void clientCancelledThatReservation() {
         Actor client = Actors.client();
         client.attemptsTo(CancelReservationThroughApi.of(ActorMemory.lastReservation(client)));
     }
 
-    @Dado("que el proveedor canceló la reserva de otro cliente")
+    @Given("the provider cancelled the other client's reservation")
     public void providerCancelledOtherClientReservation() {
         Actors.provider().attemptsTo(CancelReservationThroughApi.of(
                 ActorMemory.lastReservation(Actors.otherClient()), "Cancelada por el proveedor desde la API"));
