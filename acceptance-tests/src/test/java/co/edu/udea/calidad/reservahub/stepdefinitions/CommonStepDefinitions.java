@@ -6,8 +6,8 @@ import co.edu.udea.calidad.reservahub.questions.TextOf;
 import co.edu.udea.calidad.reservahub.questions.ToastMessage;
 import co.edu.udea.calidad.reservahub.tasks.Logout;
 import co.edu.udea.calidad.reservahub.tasks.NavigateTo;
-import io.cucumber.java.es.Cuando;
-import io.cucumber.java.es.Entonces;
+import io.cucumber.java.en.When;
+import io.cucumber.java.en.Then;
 
 import static co.edu.udea.calidad.reservahub.userinterfaces.CommonUI.DIALOG_ERROR;
 import static co.edu.udea.calidad.reservahub.userinterfaces.CommonUI.EMPTY_STATE_TITLE;
@@ -26,57 +26,57 @@ import static org.hamcrest.Matchers.equalTo;
  */
 public class CommonStepDefinitions {
 
-    @Cuando("va a la sección {string}")
+    @When("they go to the section {string}")
     public void goToSection(String section) {
         theActorInTheSpotlight().attemptsTo(NavigateTo.section(section));
     }
 
-    @Cuando("abre directamente la página {string}")
+    @When("they open the page {string} directly")
     public void openPageDirectly(String path) {
         theActorInTheSpotlight().attemptsTo(OpenPage.at(path));
     }
 
-    @Cuando("cierra la sesión")
+    @When("they log out")
     public void logout() {
         theActorInTheSpotlight().attemptsTo(Logout.now());
     }
 
-    @Entonces("debería estar en la página {string}")
+    @Then("they should be on the page {string}")
     public void shouldBeOnPage(String path) {
         theActorInTheSpotlight().should(seeThat(CurrentPage.afterNavigatingTo(path), equalTo(path)));
     }
 
-    @Entonces("debería ver el título {string}")
+    @Then("they should see the title {string}")
     public void shouldSeeTitle(String title) {
         theActorInTheSpotlight().should(seeThat(TextOf.the(PAGE_TITLE), equalTo(title)));
     }
 
-    @Entonces("debería ver el mensaje de error {string}")
+    @Then("they should see the error message {string}")
     public void shouldSeeErrorMessage(String message) {
         theActorInTheSpotlight().should(seeThat(TextOf.the(ERROR_MESSAGE), equalTo(message)));
     }
 
-    @Entonces("debería ver en la ventana el mensaje de error {string}")
+    @Then("they should see the error message {string} in the dialog")
     public void shouldSeeDialogErrorMessage(String message) {
         theActorInTheSpotlight().should(seeThat(TextOf.the(DIALOG_ERROR), equalTo(message)));
     }
 
-    @Entonces("debería ver el error de validación {string}")
+    @Then("they should see the validation error {string}")
     public void shouldSeeFieldError(String message) {
         theActorInTheSpotlight().should(seeThat(TextOf.the(FIELD_ERROR), equalTo(message)));
     }
 
-    @Entonces("debería ver la notificación {string}")
+    @Then("they should see the notification {string}")
     public void shouldSeeToast(String message) {
         theActorInTheSpotlight().should(seeThat(ToastMessage.shown(), containsString(message)));
     }
 
-    @Entonces("debería ver el aviso vacío {string}")
+    @Then("they should see the empty-state notice {string}")
     public void shouldSeeEmptyState(String title) {
         theActorInTheSpotlight().should(seeThat(TextOf.the(EMPTY_STATE_TITLE), equalTo(title)));
     }
 
-    @Entonces("debería ver el rol {string} en la barra superior")
+    @Then("they should see the role {string} in the top bar")
     public void shouldSeeRole(String role) {
         theActorInTheSpotlight().should(seeThat(TextOf.the(USER_ROLE), equalTo(role)));
     }

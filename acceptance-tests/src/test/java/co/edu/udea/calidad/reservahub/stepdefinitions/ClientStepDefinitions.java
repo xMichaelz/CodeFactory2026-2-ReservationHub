@@ -16,8 +16,8 @@ import co.edu.udea.calidad.reservahub.tasks.client.StartBooking;
 import co.edu.udea.calidad.reservahub.utils.ActorMemory;
 import co.edu.udea.calidad.reservahub.utils.Pages;
 import co.edu.udea.calidad.reservahub.utils.TestData;
-import io.cucumber.java.es.Cuando;
-import io.cucumber.java.es.Entonces;
+import io.cucumber.java.en.When;
+import io.cucumber.java.en.Then;
 import net.serenitybdd.screenplay.waits.WaitUntil;
 
 import java.time.format.DateTimeFormatter;
@@ -59,64 +59,64 @@ public class ClientStepDefinitions {
             DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM 'de' y", Locale.forLanguageTag("es-CO"));
 
     // ---------- inicio ----------
-    @Cuando("el cliente abre su inicio")
+    @When("the client opens their home page")
     public void clientOpensHome() {
         // Recarga la página: la sesión se abrió en /client antes de que existiera la reserva.
         Actors.client().attemptsTo(OpenPage.at(Pages.CLIENT_HOME));
     }
 
-    @Entonces("el cliente debería ver su saludo de bienvenida")
+    @Then("the client should see their welcome greeting")
     public void clientShouldSeeGreeting() {
         String user = ActorMemory.client(Actors.client()).email.split("@")[0];
         Actors.client().should(seeThat(TextOf.the(PAGE_TITLE), equalTo("Hola, " + user)));
     }
 
-    @Entonces("el cliente debería ver el servicio {string} en sus próximas citas")
+    @Then("the client should see the service {string} in their upcoming appointments")
     public void clientShouldSeeUpcomingAppointment(String service) {
         Actors.client().should(seeThat(TextsShown.in(UPCOMING_APPOINTMENTS),
                 hasItem(containsString(serviceName(service)))));
     }
 
     // ---------- catálogo ----------
-    @Cuando("el cliente abre el catálogo")
+    @When("the client opens the catalog")
     public void clientOpensCatalog() {
         Actors.client().attemptsTo(
                 OpenClientSection.called("Catálogo"),
                 WaitUntil.the(CATALOG_RESULT, isVisible()).forNoMoreThan(10).seconds());
     }
 
-    @Cuando("el cliente busca en el catálogo el servicio {string}")
+    @When("the client searches the catalog for the service {string}")
     public void clientSearchesService(String service) {
         Actors.client().attemptsTo(SearchCatalog.forText(serviceName(service)));
     }
 
-    @Cuando("el cliente busca en el catálogo el texto {string}")
+    @When("the client searches the catalog for the text {string}")
     public void clientSearchesText(String text) {
         Actors.client().attemptsTo(SearchCatalog.forText(text));
     }
 
-    @Cuando("el cliente busca en el catálogo el negocio del proveedor")
+    @When("the client searches the catalog for the provider's business")
     public void clientSearchesProviderBusiness() {
         Actors.client().attemptsTo(SearchCatalog.forText(businessName()));
     }
 
-    @Cuando("el cliente filtra el catálogo por el negocio del proveedor")
+    @When("the client filters the catalog by the provider's business")
     public void clientFiltersCatalogByProvider() {
         Actors.client().attemptsTo(FilterCatalogByProvider.named(businessName()));
     }
 
-    @Entonces("el catálogo debería mostrar el servicio {string}")
+    @Then("the catalog should show the service {string}")
     public void catalogShouldShowService(String service) {
         Actors.client().should(seeThat(TextsShown.in(CATALOG_SERVICE_NAMES), hasItem(serviceName(service))));
     }
 
-    @Entonces("el catálogo no debería mostrar el servicio {string}")
+    @Then("the catalog should not show the service {string}")
     public void catalogShouldNotShowService(String service) {
         Actors.client().should(seeThat(TextsShown.in(CATALOG_SERVICE_NAMES).onceVisible(CATALOG_RESULT),
                 not(hasItem(serviceName(service)))));
     }
 
-    @Entonces("el catálogo solo debería mostrar servicios del negocio del proveedor")
+    @Then("the catalog should only show services from the provider's business")
     public void catalogShouldOnlyShowProviderServices() {
         // La tarjeta muestra el negocio en mayúsculas por CSS (text-transform).
         Actors.client().should(seeThat(TextsShown.in(CATALOG_PROVIDER_NAMES),
@@ -124,29 +124,29 @@ public class ClientStepDefinitions {
     }
 
     // ---------- reservar ----------
-    @Cuando("el cliente abre la disponibilidad del servicio {string}")
+    @When("the client opens the availability of the service {string}")
     public void clientOpensAvailability(String service) {
         Actors.client().attemptsTo(StartBooking.of(serviceName(service)));
     }
 
-    @Cuando("el cliente reserva el primer horario libre del servicio {string}")
+    @When("the client books the first free slot of the service {string}")
     public void clientBooksFirstFreeSlot(String service) {
         Actors.client().attemptsTo(StartBooking.of(serviceName(service)), BookFirstFreeSlot.now());
     }
 
-    @Cuando("el cliente pasa a la semana siguiente de la disponibilidad")
+    @When("the client moves to the next week of availability")
     public void clientShowsNextWeek() {
         Actors.client().attemptsTo(ShowNextWeek.ofAvailability());
     }
 
-    @Entonces("el cliente debería ver la confirmación de la reserva del servicio {string}")
+    @Then("the client should see the booking confirmation for the service {string}")
     public void clientShouldSeeConfirmation(String service) {
         Actors.client().should(
                 seeThat(TextOf.the(CONFIRMATION_DETAIL.of("Servicio")), equalTo(serviceName(service))),
                 seeThat(TextOf.the(CONFIRMATION_DETAIL.of("Proveedor")), equalTo(businessName())));
     }
 
-    @Entonces("el cliente debería ver la disponibilidad a partir de dentro de {int} días")
+    @Then("the client should see availability starting {int} days from now")
     public void clientShouldSeeAvailabilityFrom(int days) {
         String text = LONG_DATE.format(TestData.today().plusDays(days));
         String expected = Character.toUpperCase(text.charAt(0)) + text.substring(1);
@@ -154,39 +154,39 @@ public class ClientStepDefinitions {
     }
 
     // ---------- mis reservas ----------
-    @Cuando("el cliente revisa sus reservas")
+    @When("the client reviews their reservations")
     public void clientReviewsReservations() {
         Actors.client().attemptsTo(
                 OpenClientSection.called("Mis reservas"),
                 WaitUntil.the(RESERVATIONS_TABLE, isVisible()).forNoMoreThan(10).seconds());
     }
 
-    @Cuando("el cliente cancela la reserva del servicio {string}")
+    @When("the client cancels the reservation for the service {string}")
     public void clientCancelsReservation(String service) {
         Actors.client().attemptsTo(CancelReservation.of(serviceName(service)));
     }
 
-    @Cuando("el cliente cancela la reserva del servicio {string} con el motivo {string}")
+    @When("the client cancels the reservation for the service {string} with the reason {string}")
     public void clientCancelsReservationWithReason(String service, String reason) {
         Actors.client().attemptsTo(CancelReservation.of(serviceName(service), reason));
     }
 
-    @Cuando("el cliente reprograma la reserva del servicio {string}")
+    @When("the client reschedules the reservation for the service {string}")
     public void clientReschedulesReservation(String service) {
         Actors.client().attemptsTo(RescheduleReservation.of(serviceName(service)));
     }
 
-    @Cuando("el cliente consulta sus reservas desde dentro de {int} días hasta dentro de {int} días")
+    @When("the client views their reservations from {int} days from now to {int} days from now")
     public void clientConsultsRange(int fromDays, int toDays) {
         Actors.client().attemptsTo(ConsultReservations.betweenDays(fromDays, toDays));
     }
 
-    @Entonces("el cliente debería ver la reserva del servicio {string} con el estado {string}")
+    @Then("the client should see the reservation for the service {string} with the status {string}")
     public void clientShouldSeeReservationStatus(String service, String status) {
         Actors.client().should(seeThat(TextOf.the(RESERVATION_STATUS.of(serviceName(service))), equalTo(status)));
     }
 
-    @Entonces("el cliente debería ver la reserva del servicio {string} en un horario distinto al anterior")
+    @Then("the client should see the reservation for the service {string} at a different time than before")
     public void clientShouldSeeNewTime(String service) {
         String previous = ActorMemory.value(Actors.client());
         Actors.client().should(seeThat(TextOf.the(RESERVATION_TIME.of(serviceName(service))),
@@ -194,29 +194,29 @@ public class ClientStepDefinitions {
     }
 
     // ---------- historial (HU-17) ----------
-    @Cuando("el cliente revisa su historial")
+    @When("the client reviews their history")
     public void clientReviewsHistory() {
         Actors.client().attemptsTo(
                 OpenClientSection.called("Historial"),
                 WaitUntil.the(HISTORY_TABLE, isVisible()).forNoMoreThan(10).seconds());
     }
 
-    @Cuando("el cliente filtra su historial por {string}")
+    @When("the client filters their history by {string}")
     public void clientFiltersHistory(String lifecycle) {
         Actors.client().attemptsTo(FilterHistory.by(lifecycle));
     }
 
-    @Entonces("el cliente debería ver en su historial el servicio {string} como {string}")
+    @Then("the client should see the service {string} in their history as {string}")
     public void clientShouldSeeLifecycle(String service, String lifecycle) {
         Actors.client().should(seeThat(TextOf.the(HISTORY_LIFECYCLE.of(serviceName(service))), equalTo(lifecycle)));
     }
 
-    @Entonces("el historial del cliente solo debería mostrar reservas {string}")
+    @Then("the client's history should only show {string} reservations")
     public void historyShouldOnlyShow(String lifecycle) {
         Actors.client().should(seeThat(TextsShown.in(HISTORY_LIFECYCLES), everyItem(equalTo(lifecycle))));
     }
 
-    @Entonces("el historial del cliente no debería incluir el servicio {string}")
+    @Then("the client's history should not include the service {string}")
     public void historyShouldNotInclude(String service) {
         Actors.client().should(seeThat(TextsShown.in(HISTORY_SERVICES).onceVisible(HISTORY_TABLE),
                 not(hasItem(serviceName(service)))));
