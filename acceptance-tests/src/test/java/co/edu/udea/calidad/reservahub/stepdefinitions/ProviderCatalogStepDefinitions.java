@@ -1,11 +1,12 @@
 package co.edu.udea.calidad.reservahub.stepdefinitions;
 
+import co.edu.udea.calidad.reservahub.exceptions.ActorStateException;
 import co.edu.udea.calidad.reservahub.interactions.WaitUntilLoaded;
 import co.edu.udea.calidad.reservahub.models.ResourceInfo;
 import co.edu.udea.calidad.reservahub.models.ServiceInfo;
 import co.edu.udea.calidad.reservahub.questions.BrowserValidation;
 import co.edu.udea.calidad.reservahub.questions.TextOf;
-import co.edu.udea.calidad.reservahub.questions.TextsOf;
+import co.edu.udea.calidad.reservahub.questions.TextsShown;
 import co.edu.udea.calidad.reservahub.tasks.provider.AddScheduleWindow;
 import co.edu.udea.calidad.reservahub.tasks.provider.BlockScheduleWindow;
 import co.edu.udea.calidad.reservahub.tasks.provider.ChangeServicePrice;
@@ -18,7 +19,6 @@ import co.edu.udea.calidad.reservahub.utils.ActorMemory;
 import io.cucumber.java.en.When;
 import io.cucumber.java.en.Then;
 import net.serenitybdd.screenplay.Actor;
-import net.serenitybdd.screenplay.waits.WaitUntil;
 
 import static co.edu.udea.calidad.reservahub.userinterfaces.ProviderUI.CARD_TITLE;
 import static co.edu.udea.calidad.reservahub.userinterfaces.ProviderUI.PENDING_STEP;
@@ -31,7 +31,6 @@ import static co.edu.udea.calidad.reservahub.userinterfaces.ServicesUI.SERVICE_P
 import static co.edu.udea.calidad.reservahub.userinterfaces.ServicesUI.SERVICE_RESOURCES;
 import static co.edu.udea.calidad.reservahub.userinterfaces.ServicesUI.SERVICE_STATUS;
 import static net.serenitybdd.screenplay.GivenWhenThen.seeThat;
-import static net.serenitybdd.screenplay.matchers.WebElementStateMatchers.isVisible;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
@@ -145,8 +144,8 @@ public class ProviderCatalogStepDefinitions {
         Actors.provider().should(seeThat(TextOf.the(RESOURCE_ROW.of(name)), containsString(name)));
     }
 
-    @Then("the browser should not allow submitting a quantity lower than 1")
-    public void browserRejectsQuantity() {
+    @Then("the provider should not be able to submit a quantity lower than 1")
+    public void providerCannotSubmitQuantityLowerThanOne() {
         Actors.provider().should(seeThat(BrowserValidation.of(QUANTITY), equalTo("rangeUnderflow")));
     }
 
@@ -167,9 +166,7 @@ public class ProviderCatalogStepDefinitions {
 
     @Then("the provider should see the window from {string} to {string} on {string}")
     public void providerShouldSeeWindow(String startTime, String endTime, String day) {
-        Actor provider = Actors.provider();
-        provider.attemptsTo(WaitUntil.the(WINDOW_HOURS.of(day), isVisible()).forNoMoreThan(10).seconds());
-        provider.should(seeThat(TextsOf.each(WINDOW_HOURS.of(day)), hasItem(startTime + " – " + endTime)));
+        Actors.provider().should(seeThat(TextsShown.in(WINDOW_HOURS.of(day)), hasItem(startTime + " – " + endTime)));
     }
 
     @Then("the provider should see the block {string} in the window on {string}")
@@ -186,7 +183,7 @@ public class ProviderCatalogStepDefinitions {
     private static String resourceName(String baseName) {
         String name = ActorMemory.value(Actors.provider());
         if (name == null || !name.startsWith(baseName + " ")) {
-            throw new IllegalStateException("El proveedor no tiene el recurso " + baseName);
+            throw new ActorStateException("El proveedor no tiene el recurso " + baseName);
         }
         return name;
     }

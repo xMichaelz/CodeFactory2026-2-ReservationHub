@@ -53,7 +53,8 @@ acceptance-tests/
 ├── build.gradle · settings.gradle · gradle.properties · serenity.properties · gradlew
 └── src/
     ├── main/java/co/edu/udea/calidad/reservahub/
-    │   ├── interactions/     # OpenCleanSession, OpenPage, Pause
+    │   ├── exceptions/       # ApiPreconditionException, ActorStateException
+    │   ├── interactions/     # OpenCleanSession, OpenPage, Pause, SetFieldValue, ChooseDate, WaitUntilLoaded
     │   ├── models/           # ClientAccount, ProviderAccount, ServiceInfo, ResourceInfo, Reservation
     │   ├── questions/        # TextOf, TextsOf, CurrentPage, ToastMessage, ... (what the actor observes)
     │   ├── tasks/            # LoginAs, RegisterAsClient, NavigateTo, ... (what the actor does in the UI)
@@ -218,7 +219,7 @@ Detail per user story:
 - `e2e/provider_e2e.feature` — Register the business, set it up, book for a client and review the reports
 - `provider/resources.feature` — The provider registers a resource and it appears in their list
 - `provider/resources.feature` — A resource with an already existing name cannot be registered
-- `provider/resources.feature` — The browser does not allow registering a resource with quantity 0
+- `provider/resources.feature` — The provider cannot register a resource with quantity 0
 - `provider/services.feature` — The provider links a resource to a service
 
 **HU-11 – Check availability**
@@ -250,7 +251,7 @@ Detail per user story:
 **HU-15 – Cancel a client's reservation**
 
 - `e2e/full_booking_e2e.feature` — The provider publishes a service, the client books it and the provider cancels it with a reason
-- `provider/agenda.feature` — The browser does not allow cancelling without writing a reason
+- `provider/agenda.feature` — The provider cannot cancel a reservation without writing a reason
 - `provider/agenda.feature` — A reason made only of spaces is not valid for cancelling
 - `provider/agenda.feature` — The provider cancels a reservation giving the reason
 

@@ -2,6 +2,7 @@ package co.edu.udea.calidad.reservahub.interactions;
 
 import net.serenitybdd.screenplay.Actor;
 import net.serenitybdd.screenplay.Interaction;
+import net.serenitybdd.screenplay.Tasks;
 import net.serenitybdd.screenplay.abilities.BrowseTheWeb;
 import org.openqa.selenium.JavascriptExecutor;
 
@@ -15,7 +16,7 @@ import java.time.Instant;
  */
 public class WaitUntilLoaded implements Interaction {
     public static WaitUntilLoaded page() {
-        return new WaitUntilLoaded();
+        return Tasks.instrumented(WaitUntilLoaded.class);
     }
 
     @Override

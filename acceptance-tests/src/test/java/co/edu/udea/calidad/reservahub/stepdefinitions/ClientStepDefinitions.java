@@ -18,7 +18,6 @@ import co.edu.udea.calidad.reservahub.utils.Pages;
 import co.edu.udea.calidad.reservahub.utils.TestData;
 import io.cucumber.java.en.When;
 import io.cucumber.java.en.Then;
-import net.serenitybdd.screenplay.waits.WaitUntil;
 
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -32,13 +31,11 @@ import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.HISTORY_LIF
 import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.HISTORY_LIFECYCLES;
 import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.HISTORY_SERVICES;
 import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.HISTORY_TABLE;
-import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.RESERVATIONS_TABLE;
 import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.RESERVATION_STATUS;
 import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.RESERVATION_TIME;
 import static co.edu.udea.calidad.reservahub.userinterfaces.ClientUI.UPCOMING_APPOINTMENTS;
 import static co.edu.udea.calidad.reservahub.userinterfaces.CommonUI.PAGE_TITLE;
 import static net.serenitybdd.screenplay.GivenWhenThen.seeThat;
-import static net.serenitybdd.screenplay.matchers.WebElementStateMatchers.isVisible;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.equalToIgnoringCase;
@@ -80,9 +77,7 @@ public class ClientStepDefinitions {
     // ---------- catálogo ----------
     @When("the client opens the catalog")
     public void clientOpensCatalog() {
-        Actors.client().attemptsTo(
-                OpenClientSection.called("Catálogo"),
-                WaitUntil.the(CATALOG_RESULT, isVisible()).forNoMoreThan(10).seconds());
+        Actors.client().attemptsTo(OpenClientSection.catalog());
     }
 
     @When("the client searches the catalog for the service {string}")
@@ -156,9 +151,7 @@ public class ClientStepDefinitions {
     // ---------- mis reservas ----------
     @When("the client reviews their reservations")
     public void clientReviewsReservations() {
-        Actors.client().attemptsTo(
-                OpenClientSection.called("Mis reservas"),
-                WaitUntil.the(RESERVATIONS_TABLE, isVisible()).forNoMoreThan(10).seconds());
+        Actors.client().attemptsTo(OpenClientSection.reservations());
     }
 
     @When("the client cancels the reservation for the service {string}")
@@ -196,9 +189,7 @@ public class ClientStepDefinitions {
     // ---------- historial (HU-17) ----------
     @When("the client reviews their history")
     public void clientReviewsHistory() {
-        Actors.client().attemptsTo(
-                OpenClientSection.called("Historial"),
-                WaitUntil.the(HISTORY_TABLE, isVisible()).forNoMoreThan(10).seconds());
+        Actors.client().attemptsTo(OpenClientSection.history());
     }
 
     @When("the client filters their history by {string}")

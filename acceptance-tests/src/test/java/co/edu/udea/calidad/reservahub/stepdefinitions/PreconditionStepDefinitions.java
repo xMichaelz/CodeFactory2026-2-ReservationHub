@@ -1,5 +1,6 @@
 package co.edu.udea.calidad.reservahub.stepdefinitions;
 
+import co.edu.udea.calidad.reservahub.exceptions.ActorStateException;
 import co.edu.udea.calidad.reservahub.models.ClientAccount;
 import co.edu.udea.calidad.reservahub.models.ProviderAccount;
 import co.edu.udea.calidad.reservahub.models.ResourceInfo;
@@ -146,6 +147,6 @@ public class PreconditionStepDefinitions {
         return ActorMemory.services(provider).stream()
                 .filter(service -> service.name.startsWith(baseName + " "))
                 .reduce((first, second) -> second)
-                .orElseThrow(() -> new IllegalStateException("El proveedor no tiene el servicio " + baseName));
+                .orElseThrow(() -> new ActorStateException("El proveedor no tiene el servicio " + baseName));
     }
 }

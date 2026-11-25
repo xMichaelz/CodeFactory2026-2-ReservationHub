@@ -1,7 +1,7 @@
 # language: en
 @e2e @e2e_full_booking
 Feature: Complete booking between provider and client
-  As a booking platform
+  As a provider and a client
   I want what a provider publishes to be bookable by a client and both to see the changes
   So that the business agenda and the client's appointments always match
 

@@ -2,6 +2,7 @@ package co.edu.udea.calidad.reservahub.interactions;
 
 import net.serenitybdd.screenplay.Actor;
 import net.serenitybdd.screenplay.Interaction;
+import net.serenitybdd.screenplay.Tasks;
 import net.serenitybdd.screenplay.abilities.BrowseTheWeb;
 import net.serenitybdd.screenplay.targets.Target;
 import org.openqa.selenium.JavascriptExecutor;
@@ -22,14 +23,14 @@ public class SetFieldValue implements Interaction {
     private final Target target;
     private final String value;
 
-    private SetFieldValue(Target target, String value) {
+    public SetFieldValue(Target target, String value) {
         this.target = target;
         this.value = value;
     }
 
     /** SetFieldValue.of(target, "08:00") o SetFieldValue.of(target, "2026-11-30"). */
     public static SetFieldValue of(Target target, String value) {
-        return new SetFieldValue(target, value);
+        return Tasks.instrumented(SetFieldValue.class, target, value);
     }
 
     @Override

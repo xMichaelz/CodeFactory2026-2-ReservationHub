@@ -9,25 +9,21 @@ import co.edu.udea.calidad.reservahub.tasks.provider.BookForClient;
 import co.edu.udea.calidad.reservahub.tasks.provider.CancelReservationAsProvider;
 import co.edu.udea.calidad.reservahub.tasks.provider.GoToSection;
 import co.edu.udea.calidad.reservahub.tasks.provider.LookUpClient;
+import co.edu.udea.calidad.reservahub.tasks.provider.OpenAgendaFromConfirmation;
 import co.edu.udea.calidad.reservahub.tasks.provider.RescheduleReservation;
 import co.edu.udea.calidad.reservahub.utils.ActorMemory;
 import io.cucumber.java.en.When;
 import io.cucumber.java.en.Then;
 import net.serenitybdd.screenplay.Actor;
-import net.serenitybdd.screenplay.actions.Click;
-import net.serenitybdd.screenplay.waits.WaitUntil;
 
 import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.CANCEL_REASON;
 import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.RESERVATION_ROW;
 import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.RESERVATION_STATUS;
 import static co.edu.udea.calidad.reservahub.userinterfaces.BookForClientUI.CLIENT_FOUND;
 import static co.edu.udea.calidad.reservahub.userinterfaces.BookForClientUI.CONFIRMED_CLIENT;
-import static co.edu.udea.calidad.reservahub.userinterfaces.BookForClientUI.SEE_AGENDA_LINK;
 import static co.edu.udea.calidad.reservahub.userinterfaces.BusinessHistoryUI.LIFECYCLE;
 import static co.edu.udea.calidad.reservahub.userinterfaces.BusinessHistoryUI.SAVED_STATUS;
-import static co.edu.udea.calidad.reservahub.userinterfaces.CommonUI.PAGE_TITLE;
 import static net.serenitybdd.screenplay.GivenWhenThen.seeThat;
-import static net.serenitybdd.screenplay.matchers.WebElementStateMatchers.containsText;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
@@ -60,10 +56,10 @@ public class ProviderAgendaStepDefinitions {
 
     @When("the provider reschedules the client's reservation to a slot in the following week")
     public void providerReschedules() {
-        Actor provider = Actors.provider();
-        provider.attemptsTo(GoToSection.called("Agenda"));
-        ActorMemory.rememberValue(provider, TextOf.the(RESERVATION_ROW.of(clientName())).answeredBy(provider));
-        provider.attemptsTo(RescheduleReservation.ofClient(clientName()));
+        String name = clientName();
+        Actors.provider().attemptsTo(
+                GoToSection.called("Agenda"),
+                RescheduleReservation.ofClient(name));
     }
 
     @Then("the provider should see the client's reservation in their agenda with the status {string}")
@@ -82,8 +78,8 @@ public class ProviderAgendaStepDefinitions {
                 allOf(not(equalTo(before)), containsString("Confirmada"))));
     }
 
-    @Then("the browser should not allow submitting the cancellation without a reason")
-    public void browserRequiresReason() {
+    @Then("the provider should not be able to submit the cancellation without a reason")
+    public void providerCannotSubmitCancellationWithoutReason() {
         Actors.provider().should(seeThat(BrowserValidation.of(CANCEL_REASON), equalTo("valueMissing")));
     }
 
@@ -109,10 +105,7 @@ public class ProviderAgendaStepDefinitions {
 
     @When("the provider goes to their agenda from the confirmation")
     public void providerGoesToAgendaFromConfirmation() {
-        Actors.provider().attemptsTo(
-                Click.on(SEE_AGENDA_LINK),
-                WaitUntil.the(PAGE_TITLE, containsText("Agenda de reservas")).forNoMoreThan(10).seconds(),
-                WaitUntilLoaded.page());
+        Actors.provider().attemptsTo(OpenAgendaFromConfirmation.now());
     }
 
     @Then("the provider should see that the client was found by their full name")

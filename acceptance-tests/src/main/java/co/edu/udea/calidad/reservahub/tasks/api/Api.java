@@ -1,5 +1,6 @@
 package co.edu.udea.calidad.reservahub.tasks.api;
 
+import co.edu.udea.calidad.reservahub.exceptions.ApiPreconditionException;
 import co.edu.udea.calidad.reservahub.utils.ActorMemory;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
@@ -27,8 +28,7 @@ final class Api {
     static Response expect(int status, String action) {
         Response response = SerenityRest.lastResponse();
         if (response.statusCode() != status) {
-            throw new AssertionError(String.format("No se pudo %s: HTTP %d %s", action, response.statusCode(),
-                    response.asString()));
+            throw new ApiPreconditionException(action, response.statusCode(), response.asString());
         }
         return response;
     }

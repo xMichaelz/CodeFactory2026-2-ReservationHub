@@ -1,6 +1,8 @@
 package co.edu.udea.calidad.reservahub.tasks.provider;
 
 import co.edu.udea.calidad.reservahub.interactions.Pause;
+import co.edu.udea.calidad.reservahub.questions.TextOf;
+import co.edu.udea.calidad.reservahub.utils.ActorMemory;
 import net.serenitybdd.screenplay.Actor;
 import net.serenitybdd.screenplay.Task;
 import net.serenitybdd.screenplay.Tasks;
@@ -10,6 +12,7 @@ import net.serenitybdd.screenplay.waits.WaitUntil;
 import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.CONFIRM_RESCHEDULE_BUTTON;
 import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.NEXT_WEEK_IN_DIALOG;
 import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.RESERVATION_ACTION;
+import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.RESERVATION_ROW;
 import static co.edu.udea.calidad.reservahub.userinterfaces.AgendaUI.SLOT_IN_DIALOG;
 import static net.serenitybdd.screenplay.matchers.WebElementStateMatchers.isEnabled;
 import static net.serenitybdd.screenplay.matchers.WebElementStateMatchers.isVisible;
@@ -31,6 +34,7 @@ public class RescheduleReservation implements Task {
 
     @Override
     public <T extends Actor> void performAs(T actor) {
+        ActorMemory.rememberValue(actor, TextOf.the(RESERVATION_ROW.of(clientName)).answeredBy(actor));
         actor.attemptsTo(
                 WaitUntil.the(RESERVATION_ACTION.of(clientName, "Reprogramar"), isVisible()).forNoMoreThan(10).seconds(),
                 Click.on(RESERVATION_ACTION.of(clientName, "Reprogramar")),

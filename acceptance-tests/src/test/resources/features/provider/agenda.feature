@@ -16,11 +16,11 @@ Feature: Provider agenda
     Then the provider should see the client's reservation in their agenda with the status "Confirmada"
 
   @HU-15 @CA-HU15-02
-  Scenario: The browser does not allow cancelling without writing a reason
+  Scenario: The provider cannot cancel a reservation without writing a reason
     Given the provider has an appointment with the client tomorrow for "Corte"
     And the provider is logged in
     When the provider tries to cancel the client's reservation without writing a reason
-    Then the browser should not allow submitting the cancellation without a reason
+    Then the provider should not be able to submit the cancellation without a reason
 
   @HU-15 @CA-HU15-02
   Scenario: A reason made only of spaces is not valid for cancelling

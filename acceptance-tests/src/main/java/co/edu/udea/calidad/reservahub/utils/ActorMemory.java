@@ -1,5 +1,6 @@
 package co.edu.udea.calidad.reservahub.utils;
 
+import co.edu.udea.calidad.reservahub.exceptions.ActorStateException;
 import co.edu.udea.calidad.reservahub.models.ClientAccount;
 import co.edu.udea.calidad.reservahub.models.ProviderAccount;
 import co.edu.udea.calidad.reservahub.models.Reservation;
@@ -42,7 +43,7 @@ public final class ActorMemory {
     public static ClientAccount client(Actor actor) {
         ClientAccount account = actor.recall(CLIENT_ACCOUNT);
         if (account == null) {
-            throw new IllegalStateException(actor.getName() + " no tiene una cuenta de cliente");
+            throw new ActorStateException(actor.getName() + " no tiene una cuenta de cliente");
         }
         return account;
     }
@@ -54,7 +55,7 @@ public final class ActorMemory {
     public static ProviderAccount provider(Actor actor) {
         ProviderAccount account = actor.recall(PROVIDER_ACCOUNT);
         if (account == null) {
-            throw new IllegalStateException(actor.getName() + " no tiene una cuenta de proveedor");
+            throw new ActorStateException(actor.getName() + " no tiene una cuenta de proveedor");
         }
         return account;
     }
@@ -85,7 +86,7 @@ public final class ActorMemory {
     public static String token(Actor actor) {
         String token = actor.recall(TOKEN);
         if (token == null) {
-            throw new IllegalStateException(actor.getName() + " no ha iniciado sesión en la API");
+            throw new ActorStateException(actor.getName() + " no ha iniciado sesión en la API");
         }
         return token;
     }
@@ -101,7 +102,7 @@ public final class ActorMemory {
         Map<String, ServiceInfo> services = actor.recall(SERVICES);
         ServiceInfo service = services.get(name);
         if (service == null) {
-            throw new IllegalStateException(actor.getName() + " no conoce el servicio " + name);
+            throw new ActorStateException(actor.getName() + " no conoce el servicio " + name);
         }
         return service;
     }
@@ -110,7 +111,7 @@ public final class ActorMemory {
     public static ServiceInfo mainService(Actor actor) {
         Map<String, ServiceInfo> services = actor.recall(SERVICES);
         if (services.isEmpty()) {
-            throw new IllegalStateException(actor.getName() + " no ha creado servicios");
+            throw new ActorStateException(actor.getName() + " no ha creado servicios");
         }
         return services.values().iterator().next();
     }
@@ -135,7 +136,7 @@ public final class ActorMemory {
     public static Reservation lastReservation(Actor actor) {
         List<Reservation> reservations = actor.recall(RESERVATIONS);
         if (reservations.isEmpty()) {
-            throw new IllegalStateException(actor.getName() + " no tiene reservas");
+            throw new ActorStateException(actor.getName() + " no tiene reservas");
         }
         return reservations.get(reservations.size() - 1);
     }
